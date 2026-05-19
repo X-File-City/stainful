@@ -1,5 +1,7 @@
+<h1 align="center">stainful</h1>
+
 <p align="center">
-  <img src="assets/banner.svg" alt="stainful — the open-source Stainless" width="100%">
+  <img src="assets/architecture.png" alt="stainful — OpenAPI spec + stainless.yml → resolved IR → idiomatic Python SDK" width="100%">
 </p>
 
 <p align="center">
@@ -90,15 +92,9 @@ resp = api.agency_agency_id_json_get(id)          agency = client.agency.retriev
 
 ## How it works
 
-```
- stainless.yml ─┐                                                  ┌─► Python SDK
- (config)       ▼                                                  │   (httpx + pydantic v2)
-   config loader ──┐                                                │
-                   ├─► IR ──────────────► Python emitter ───────────┤
-   OpenAPI loader ─┘   intermediate                                 └─► vendored runtime
-   + $ref/allOf        representation                                   (retries, errors,
-   resolver            (resolved, typed)                                 pagination, SSE)
-```
+The pipeline is shown above: an OpenAPI spec and `stainless.yml` are parsed,
+resolved, and lowered into an intermediate representation, which the emitter
+renders into a Python SDK over a vendored runtime.
 
 The intermediate representation is a fully-resolved, language-agnostic model:
 `allOf` is merged, `oneOf` becomes a real tagged union, and optionality is

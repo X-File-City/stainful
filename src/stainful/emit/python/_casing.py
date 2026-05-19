@@ -22,9 +22,28 @@ def snake(name: str) -> str:
     return re.sub(r"_+", "_", s).strip("_").lower()
 
 
+# Whole-token initialisms Stainless renders ALL-CAPS in PascalCase names
+# (verified vs the real Stainless OneBusAway SDK: `RouteIDsForAgency`,
+# `NearbyStopID`). Exact-token match (not substring) so `Identifier` is safe.
+_INITIALISMS = {
+    "id", "url", "uri", "api", "sdk", "http", "https", "html", "xml", "json",
+    "sql", "cli", "io", "ai", "ip", "db", "ui", "jwt", "csv", "ssl", "tls",
+    "sse", "gps", "vin",
+}
+
+
+def _cap_token(p: str) -> str:
+    low = p.lower()
+    if low in _INITIALISMS:
+        return p.upper()                         # Id -> ID, Url -> URL
+    if low.endswith("s") and low[:-1] in _INITIALISMS:
+        return p[:-1].upper() + "s"              # Ids -> IDs
+    return p[:1].upper() + p[1:]
+
+
 def pascal(name: str) -> str:
     parts = _NON_ALNUM.split(_CAMEL_2.sub(r"\1_\2", name))
-    return "".join(p[:1].upper() + p[1:] for p in parts if p)
+    return "".join(_cap_token(p) for p in parts if p)
 
 
 def singularize(word: str) -> str:
@@ -49,9 +68,6 @@ def singularize(word: str) -> str:
     return w
 
 
-# Tokens Stainless renders ALL-CAPS in class names (verified: the real
-# Stainless-generated OneBusAway SDK client class is `OnebusawaySDK`).
-_INITIALISMS = {"sdk", "api", "id", "url", "http", "io", "ai", "sql", "cli"}
 
 
 def brand(api_name: str) -> str:

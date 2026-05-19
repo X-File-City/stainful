@@ -4,9 +4,9 @@
     "MissingStreamClassError",
     "StreamAlreadyConsumed"
   ],
-  "resource_method_recall": 0.9318,
-  "method_signature_match": 0.9146,
-  "model_name_recall": 0.6989,
+  "resource_method_recall": 1.0,
+  "method_signature_match": 0.8977,
+  "model_name_recall": 0.7273,
   "export_recall": 0.5122,
   "counts": {
     "oracle_exceptions": 16,

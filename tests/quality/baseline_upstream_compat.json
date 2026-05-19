@@ -1,10 +1,6 @@
 {
   "total": 29,
-  "import_compatible": 28,
-  "rate": 0.9655,
-  "failures": {
-    "test_trip_details.py": [
-      "onebusaway.types.TripDetailRetrieveResponse missing"
-    ]
-  }
+  "import_compatible": 29,
+  "rate": 1.0,
+  "failures": {}
 }

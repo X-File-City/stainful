@@ -76,8 +76,8 @@ def test_subresource_path_and_request_body(chat_sdk):
                   http_client=httpx.Client(transport=httpx.MockTransport(h)))
     r = c.chat.completions.create(model="m", messages=[{"role": "user", "content": "hey"}])
     # Stainless path-naming: the response model is per-operation, not the
-    # component name. chat.completions.create -> CompletionsCreateResponse.
-    assert type(r).__name__ == "CompletionsCreateResponse"
+    # component name. chat.completions.create -> CompletionCreateResponse.
+    assert type(r).__name__ == "CompletionCreateResponse"
     assert r.choices[0].message.content == "hi"
     assert r.choices[0].message.name is None  # nullable field present-but-null
     assert b'"model"' in sent["body"] and b'"messages"' in sent["body"]
@@ -107,7 +107,7 @@ def test_sse_streaming_sync_and_async(chat_sdk):
         )
     )
     assert [c.delta for c in chunks] == ["He", "llo"]
-    assert type(chunks[0]).__name__ == "CompletionsCreateEvent"
+    assert type(chunks[0]).__name__ == "CompletionCreateEvent"
 
     async def go():
         ac = chat.AsyncChatSDK(
@@ -126,7 +126,7 @@ def test_streaming_overloads_present_in_source(chat_sdk):
     out, _ = chat_sdk
     src = (out / "chat" / "resources" / "completions.py").read_text()
     assert src.count("@overload") >= 2          # stream False/True overloads
-    assert "Stream[CompletionsCreateEvent]" in src  # typed event stream return
+    assert "Stream[CompletionCreateEvent]" in src  # typed event stream return
     assert 'Field(discriminator="type")' not in src  # union lives in types/
     # per-file layout: the discriminated union + its Literal-narrowed variants
     # live in the shared module (Event is $shared.models)

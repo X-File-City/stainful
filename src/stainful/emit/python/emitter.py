@@ -17,7 +17,14 @@ import re
 import shutil
 from pathlib import Path
 
-from stainful.emit.python._casing import brand, package, pascal, singularize, snake
+from stainful.emit.python._casing import (
+    brand,
+    pascal,
+    pascal_singular_last,
+    package,
+    singularize,
+    snake,
+)
 from stainful.errors import StainfulError
 from stainful.ir.model import API, HTTPVerb, Method, Resource, SecurityScheme
 from stainful.ir.types import (
@@ -375,7 +382,7 @@ class _Emitter:
     def _return_type(self, m: Method, resource: str) -> str:
         for status in ("200", "201", "2XX", "default"):
             if status in m.responses:
-                path = f"{pascal(resource)}{pascal(m.name)}Response"
+                path = f"{pascal_singular_last(resource)}{pascal(m.name)}Response"
                 self._cur_module = f"{snake(resource)}_{snake(m.name)}_response"
                 return self._render(m.responses[status], path, frozenset())
         return "object"
@@ -396,7 +403,7 @@ class _Emitter:
             return []
         from stainful.ir.model import ContentType
 
-        root = f"{pascal(resource)}{pascal(m.name)}Params"
+        root = f"{pascal_singular_last(resource)}{pascal(m.name)}Params"
         self._cur_module = f"{snake(resource)}_{snake(m.name)}_params"
         if m.body.content_type != ContentType.JSON:
             return [("body", None, self._render(m.body.type, root, frozenset()),
@@ -421,7 +428,7 @@ class _Emitter:
         fields = list(body_props) + [(p[0], p[1], p[2], False) for p in query_props]
         if not fields:
             return
-        name = f"{pascal(resource)}{pascal(m.name)}Params"
+        name = f"{pascal_singular_last(resource)}{pascal(m.name)}Params"
         if name in self._classes:
             return
         lines = [f"class {name}(TypedDict, total=False):"]
@@ -451,7 +458,7 @@ class _Emitter:
         query_props = [
             (self._py_field_name(p.name), p.name,
              self._render(p.type,
-                          f"{pascal(resource)}{pascal(m.name)}Params{pascal(p.name)}",
+                          f"{pascal_singular_last(resource)}{pascal(m.name)}Params{pascal(p.name)}",
                           frozenset()))
             for p in m.query_params
         ]
@@ -467,7 +474,7 @@ class _Emitter:
             self._cur_module = f"{snake(resource)}_{snake(m.name)}_response"
         event_ann = (
             self._render(st.event_type,
-                         f"{pascal(resource)}{pascal(m.name)}Event", frozenset())
+                         f"{pascal_singular_last(resource)}{pascal(m.name)}Event", frozenset())
             if st else None
         )
         stream_cls = ("AsyncStream" if is_async else "Stream") if st else None

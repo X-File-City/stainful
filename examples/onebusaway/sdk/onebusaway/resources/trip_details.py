@@ -17,7 +17,7 @@ from .._core._response import (
 )
 from .._core._sentinels import NotGiven, not_given
 from .._core._types import Body, Headers, Query
-from ..types import Trip, TripDetailsRetrieveResponse
+from ..types import Trip, TripDetailRetrieveResponse
 
 __all__ = ["TripDetailsResource", "AsyncTripDetailsResource"]
 
@@ -44,7 +44,7 @@ class TripDetailsResource(SyncAPIResource):
         extra_query: Query | None = None,
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
-    ) -> TripDetailsRetrieveResponse:
+    ) -> TripDetailRetrieveResponse:
         """Retrieve Trip Details"""
         if not trip_id:
             raise ValueError(
@@ -67,7 +67,7 @@ class TripDetailsResource(SyncAPIResource):
                 timeout=timeout,
                 params=_params,
             ),
-            cast_to=TripDetailsRetrieveResponse,
+            cast_to=TripDetailRetrieveResponse,
         )
 
 
@@ -93,7 +93,7 @@ class AsyncTripDetailsResource(AsyncAPIResource):
         extra_query: Query | None = None,
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = not_given,
-    ) -> TripDetailsRetrieveResponse:
+    ) -> TripDetailRetrieveResponse:
         """Retrieve Trip Details"""
         if not trip_id:
             raise ValueError(
@@ -116,7 +116,7 @@ class AsyncTripDetailsResource(AsyncAPIResource):
                 timeout=timeout,
                 params=_params,
             ),
-            cast_to=TripDetailsRetrieveResponse,
+            cast_to=TripDetailRetrieveResponse,
         )
 
 

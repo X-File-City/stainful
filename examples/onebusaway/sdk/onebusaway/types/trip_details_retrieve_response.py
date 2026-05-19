@@ -15,7 +15,7 @@ from .._utils import PropertyInfo  # noqa: F401
 from .shared import References, ResponseWrapper
 
 
-class TripDetailsRetrieveResponseDataEntryScheduleStopTime(BaseModel):
+class TripDetailRetrieveResponseDataEntryScheduleStopTime(BaseModel):
     arrival_time: Optional[int] = Field(default=None, alias="arrivalTime")
     departure_time: Optional[int] = Field(default=None, alias="departureTime")
     distance_along_trip: Optional[float] = Field(default=None, alias="distanceAlongTrip")
@@ -24,25 +24,25 @@ class TripDetailsRetrieveResponseDataEntryScheduleStopTime(BaseModel):
     stop_id: Optional[str] = Field(default=None, alias="stopId")
 
 
-class TripDetailsRetrieveResponseDataEntrySchedule(BaseModel):
+class TripDetailRetrieveResponseDataEntrySchedule(BaseModel):
     frequency: Optional[str] = None
     next_trip_id: str = Field(alias="nextTripId")
     previous_trip_id: str = Field(alias="previousTripId")
-    stop_times: List[TripDetailsRetrieveResponseDataEntryScheduleStopTime] = Field(alias="stopTimes")
+    stop_times: List[TripDetailRetrieveResponseDataEntryScheduleStopTime] = Field(alias="stopTimes")
     time_zone: str = Field(alias="timeZone")
 
 
-class TripDetailsRetrieveResponseDataEntryStatusLastKnownLocation(BaseModel):
+class TripDetailRetrieveResponseDataEntryStatusLastKnownLocation(BaseModel):
     lat: Optional[float] = None
     lon: Optional[float] = None
 
 
-class TripDetailsRetrieveResponseDataEntryStatusPosition(BaseModel):
+class TripDetailRetrieveResponseDataEntryStatusPosition(BaseModel):
     lat: Optional[float] = None
     lon: Optional[float] = None
 
 
-class TripDetailsRetrieveResponseDataEntryStatus(BaseModel):
+class TripDetailRetrieveResponseDataEntryStatus(BaseModel):
     active_trip_id: str = Field(alias="activeTripId")
     block_trip_sequence: int = Field(alias="blockTripSequence")
     closest_stop: str = Field(alias="closestStop")
@@ -50,7 +50,7 @@ class TripDetailsRetrieveResponseDataEntryStatus(BaseModel):
     distance_along_trip: float = Field(alias="distanceAlongTrip")
     frequency: Optional[str] = None
     last_known_distance_along_trip: float = Field(alias="lastKnownDistanceAlongTrip")
-    last_known_location: Optional[TripDetailsRetrieveResponseDataEntryStatusLastKnownLocation] = Field(default=None, alias="lastKnownLocation")
+    last_known_location: Optional[TripDetailRetrieveResponseDataEntryStatusLastKnownLocation] = Field(default=None, alias="lastKnownLocation")
     last_known_orientation: Optional[float] = Field(default=None, alias="lastKnownOrientation")
     last_location_update_time: int = Field(alias="lastLocationUpdateTime")
     last_update_time: int = Field(alias="lastUpdateTime")
@@ -61,7 +61,7 @@ class TripDetailsRetrieveResponseDataEntryStatus(BaseModel):
     occupancy_status: str = Field(alias="occupancyStatus")
     orientation: Optional[float] = None
     phase: str
-    position: Optional[TripDetailsRetrieveResponseDataEntryStatusPosition] = None
+    position: Optional[TripDetailRetrieveResponseDataEntryStatusPosition] = None
     predicted: bool
     schedule_deviation: int = Field(alias="scheduleDeviation")
     scheduled_distance_along_trip: Optional[float] = Field(default=None, alias="scheduledDistanceAlongTrip")
@@ -72,19 +72,19 @@ class TripDetailsRetrieveResponseDataEntryStatus(BaseModel):
     vehicle_id: Optional[str] = Field(default=None, alias="vehicleId")
 
 
-class TripDetailsRetrieveResponseDataEntry(BaseModel):
+class TripDetailRetrieveResponseDataEntry(BaseModel):
     frequency: Optional[str] = None
-    schedule: Optional[TripDetailsRetrieveResponseDataEntrySchedule] = None
+    schedule: Optional[TripDetailRetrieveResponseDataEntrySchedule] = None
     service_date: Optional[int] = Field(default=None, alias="serviceDate")
     situation_ids: Optional[List[str]] = Field(default=None, alias="situationIds")
-    status: Optional[TripDetailsRetrieveResponseDataEntryStatus] = None
+    status: Optional[TripDetailRetrieveResponseDataEntryStatus] = None
     trip_id: str = Field(alias="tripId")
 
 
-class TripDetailsRetrieveResponseData(BaseModel):
-    entry: TripDetailsRetrieveResponseDataEntry
+class TripDetailRetrieveResponseData(BaseModel):
+    entry: TripDetailRetrieveResponseDataEntry
     references: References
 
 
-class TripDetailsRetrieveResponse(ResponseWrapper):
-    data: TripDetailsRetrieveResponseData
+class TripDetailRetrieveResponse(ResponseWrapper):
+    data: TripDetailRetrieveResponseData

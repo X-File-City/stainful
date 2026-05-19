@@ -13,7 +13,7 @@ from .._core._models import BaseModel  # noqa: F401
 from .._utils import PropertyInfo  # noqa: F401
 
 
-class TripDetailsRetrieveParams(TypedDict, total=False):
+class TripDetailRetrieveParams(TypedDict, total=False):
     service_date: Annotated[int, PropertyInfo(alias="serviceDate")]
     include_trip: Annotated[bool, PropertyInfo(alias="includeTrip")]
     include_schedule: Annotated[bool, PropertyInfo(alias="includeSchedule")]

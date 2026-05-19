@@ -118,7 +118,7 @@ def test_additive_spec_change_does_not_churn_existing_endpoints(tmp_path):
     # possible statement of the no-churn property.
     mod = "types/widgets_retrieve_response.py"
     assert mod in before and mod in after
-    assert "class WidgetsRetrieveResponse(" in before[mod]
+    assert "class WidgetRetrieveResponse(" in before[mod]
     assert before[mod] == after[mod], (
         "existing endpoint's model module churned on an additive change"
     )

@@ -46,6 +46,19 @@ def pascal(name: str) -> str:
     return "".join(_cap_token(p) for p in parts if p)
 
 
+def pascal_singular_last(name: str) -> str:
+    """PascalCase, but singularize the LAST word — Stainless's resource→type
+    prefix rule: `trip-details` → `TripDetail` (type names) while the resource
+    *class* stays `TripDetailsResource`; `agencies_with_coverage` is unchanged
+    (last word "coverage" already singular). Verified across the OneBusAway
+    corpus — do not blanket-singularize the whole name.
+    """
+    parts = [p for p in _NON_ALNUM.split(_CAMEL_2.sub(r"\1_\2", name)) if p]
+    if parts:
+        parts[-1] = singularize(parts[-1])
+    return "".join(_cap_token(p) for p in parts)
+
+
 def singularize(word: str) -> str:
     """English-ish singular for an array field's path segment.
 

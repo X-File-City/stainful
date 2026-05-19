@@ -3,6 +3,18 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Improved (model fidelity vs the real Stainless SDK)
+- Resource→type-name prefix now singularizes the last word
+  (`trip-details` → `TripDetailRetrieveResponse`; `client.chat.completions`
+  → `CompletionCreateResponse`, like OpenAI's `ChatCompletion`) while the
+  resource *class* stays plural. Narrowly scoped — `agencies_with_coverage`
+  et al. unchanged.
+- Result: model-name recall **0.90 → 0.95**, method-signature match
+  **0.99 → 1.00**, and **29/29 (100%)** of Stainless's own test files now
+  import unchanged against stainful's output (was 28/29).
+
 ## [0.1.0] — 2026-05-20
 
 First public release. **The open-source Stainless** — point your existing

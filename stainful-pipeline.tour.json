@@ -1,0 +1,195 @@
+{
+  "id": "stainful-pipeline",
+  "title": "stainful: From OpenAPI Spec to Idiomatic Python SDK",
+  "description": "Walk the stainful pipeline — an OpenAPI spec and a Stainless config are loaded, resolved into a language-agnostic intermediate representation, then emitted as a Python SDK that wraps a hand-written vendored runtime.",
+  "version": "1.0.0",
+  "audience": "New Contributors",
+  "prerequisites": [
+    "Familiarity with Python and OpenAPI",
+    "Skim the project readme for the quick pitch"
+  ],
+  "steps": [
+    {
+      "id": "step-1-overview",
+      "title": "What is stainful?",
+      "description": "stainful turns an OpenAPI spec and a Stainless config into a fully-typed, idiomatic Python SDK — pagination, retries, streaming, sync and async — no hosted service. This is the whole map, colored by file type. The next steps zoom into each piece of the pipeline: the loaders that read the inputs, the intermediate representation in the middle, the emitter that writes Python, and the runtime that gets vendored into every generated SDK.",
+      "estimatedTime": 60,
+      "colorMode": "fileTypes"
+    },
+    {
+      "id": "step-2-cli-entrypoint",
+      "title": "The command-line entrypoint",
+      "description": "Everything starts at the command line. The entrypoint wires the four pipeline stages together: load the config, load the spec, build the intermediate representation, then emit. Read this part first — it is the shortest possible summary of the entire architecture.",
+      "estimatedTime": 90,
+      "focusDirectory": "src/stainful",
+      "highlightLayers": [
+        {
+          "id": "cli",
+          "name": "CLI",
+          "color": "#3b82f6",
+          "items": [
+            { "path": "src/stainful/cli.py", "type": "file" },
+            { "path": "src/stainful/__init__.py", "type": "file" },
+            { "path": "src/stainful/errors.py", "type": "file" }
+          ],
+          "opacity": 0.9,
+          "renderStrategy": "fill"
+        }
+      ],
+      "colorMode": "fileTypes"
+    },
+    {
+      "id": "step-3-config-loader",
+      "title": "Stage one — load the Stainless config",
+      "description": "The first stage parses the Stainless config using a position-aware YAML library so it can attach precise line and column diagnostics. One file defines the typed shape of the config; the other turns the raw document into that shape with quotable error messages.",
+      "estimatedTime": 90,
+      "focusDirectory": "src/stainful/config",
+      "highlightLayers": [
+        {
+          "id": "config-stage",
+          "name": "Config stage",
+          "color": "#10b981",
+          "items": [
+            { "path": "src/stainful/config/loader.py", "type": "file" },
+            { "path": "src/stainful/config/model.py", "type": "file" }
+          ],
+          "opacity": 0.85,
+          "renderStrategy": "fill"
+        }
+      ],
+      "colorMode": "fileTypes"
+    },
+    {
+      "id": "step-4-openapi-resolver",
+      "title": "Stage two — load and resolve the OpenAPI spec",
+      "description": "The second stage reads the OpenAPI document and then resolves it. The resolver walks every reference without infinite-looping on cycles, and it merges inherited schemas so downstream code sees a single flattened shape. This is the layer that absorbs all the messiness of real-world OpenAPI.",
+      "estimatedTime": 120,
+      "focusDirectory": "src/stainful/openapi",
+      "highlightLayers": [
+        {
+          "id": "openapi-stage",
+          "name": "OpenAPI stage",
+          "color": "#f59e0b",
+          "items": [
+            { "path": "src/stainful/openapi/loader.py", "type": "file" },
+            { "path": "src/stainful/openapi/resolver.py", "type": "file" }
+          ],
+          "opacity": 0.85,
+          "renderStrategy": "fill"
+        }
+      ],
+      "colorMode": "fileTypes"
+    },
+    {
+      "id": "step-5-ir",
+      "title": "Stage three — the intermediate representation",
+      "description": "The intermediate representation is the heart of stainful — a fully-resolved, language-agnostic model of the SDK. Polymorphic schemas become real tagged unions, optionality stays three-valued so required, optional, and nullable remain distinct, and resources are shaped around the domain rather than the raw endpoint list.",
+      "estimatedTime": 180,
+      "focusDirectory": "src/stainful/ir",
+      "highlightLayers": [
+        {
+          "id": "ir-stage",
+          "name": "IR stage",
+          "color": "#ef4444",
+          "items": [
+            { "path": "src/stainful/ir/builder.py", "type": "file" },
+            { "path": "src/stainful/ir/model.py", "type": "file" },
+            { "path": "src/stainful/ir/types.py", "type": "file" }
+          ],
+          "opacity": 0.9,
+          "renderStrategy": "fill"
+        }
+      ],
+      "colorMode": "fileTypes"
+    },
+    {
+      "id": "step-6-emit",
+      "title": "Stage four — emit the Python SDK",
+      "description": "The emitter is a thin templating renderer that walks the intermediate representation and writes a Python package. A small companion handles Python naming conventions — snake-cased methods, capitalized types, singularized resource prefixes. Keeping the emitter deliberately dumb is the point: idiomatic behavior lives in the runtime, not in per-endpoint templates.",
+      "estimatedTime": 150,
+      "focusDirectory": "src/stainful/emit",
+      "highlightLayers": [
+        {
+          "id": "emit-stage",
+          "name": "Emit stage",
+          "color": "#06b6d4",
+          "items": [
+            { "path": "src/stainful/emit/python/emitter.py", "type": "file" },
+            { "path": "src/stainful/emit/python/_casing.py", "type": "file" }
+          ],
+          "opacity": 0.9,
+          "renderStrategy": "fill"
+        }
+      ],
+      "colorMode": "fileTypes"
+    },
+    {
+      "id": "step-7-runtime",
+      "title": "The vendored runtime",
+      "description": "This area does not run inside the generator — it is copied verbatim into every generated SDK. Inside it: the sync and async HTTP client, the auto-pagination iterator, the typed server-sent-event streaming layer, and the typed-error hierarchy. Because the runtime is hand-written and audited once, the emitter can stay simple and every generated SDK inherits the same battle-tested behavior.",
+      "estimatedTime": 180,
+      "focusDirectory": "src/stainful/runtime",
+      "highlightLayers": [
+        {
+          "id": "runtime-core",
+          "name": "Generated-SDK runtime",
+          "color": "#a855f7",
+          "items": [
+            { "path": "src/stainful/runtime/_base_client.py", "type": "file" },
+            { "path": "src/stainful/runtime/pagination.py", "type": "file" },
+            { "path": "src/stainful/runtime/_streaming.py", "type": "file" },
+            { "path": "src/stainful/runtime/_exceptions.py", "type": "file" },
+            { "path": "src/stainful/runtime/_models.py", "type": "file" },
+            { "path": "src/stainful/runtime/_response.py", "type": "file" }
+          ],
+          "opacity": 0.85,
+          "renderStrategy": "fill"
+        }
+      ],
+      "colorMode": "fileTypes"
+    },
+    {
+      "id": "step-8-conformance",
+      "title": "Conformance — the project dogfoods itself",
+      "description": "The project dogfoods itself: a real production config and spec live alongside their checked-in generated SDK, and continuous integration fails if regenerating changes even a single byte. Fixture-driven tests cover pagination, multipart uploads, binary responses, and streaming end to end.",
+      "estimatedTime": 120,
+      "focusDirectory": "tests",
+      "highlightLayers": [
+        {
+          "id": "conformance-tests",
+          "name": "Conformance & fidelity",
+          "color": "#3da639",
+          "items": [
+            { "path": "tests/test_dogfood.py", "type": "file" },
+            { "path": "tests/test_regeneration_stability.py", "type": "file" },
+            { "path": "tests/test_fidelity_onebusaway.py", "type": "file" },
+            { "path": "tests/test_behavioral_conformance.py", "type": "file" },
+            { "path": "tests/fixtures", "type": "directory" }
+          ],
+          "opacity": 0.85,
+          "renderStrategy": "fill"
+        }
+      ],
+      "colorMode": "fileTypes"
+    },
+    {
+      "id": "step-9-full-pipeline",
+      "title": "The whole pipeline, in one view",
+      "description": "Zoom back out: the loaders feed the intermediate representation, which feeds the emitter, which writes a package that imports the vendored runtime. A good first contribution is to pick a failing fixture and trace it through the stages you just walked.",
+      "estimatedTime": 90,
+      "focusDirectory": "",
+      "colorMode": "fileTypes"
+    }
+  ],
+  "metadata": {
+    "author": "Michael Flannery",
+    "createdAt": "2026-05-19T00:00:00.000Z",
+    "tags": [
+      "onboarding",
+      "architecture",
+      "pipeline",
+      "python",
+      "codegen"
+    ]
+  }
+}

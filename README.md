@@ -1,15 +1,12 @@
-<h1>stainful&nbsp;&nbsp;<sub><sub>the open-source Stainless</sub></sub></h1>
+# stainful
 
-**Generate an idiomatic Python SDK from an OpenAPI spec and a `stainless.yml`.**
-Open source. Runs locally and in CI. No account, no hosted service.
+**The open-source Stainless.** Generate an idiomatic Python SDK from an OpenAPI
+spec and a `stainless.yml` — open source, runs locally and in CI, no hosted service.
 
-<p>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg" alt="Python 3.10+">
-  <a href="https://github.com/stainlu/stainful/actions/workflows/ci.yml"><img src="https://github.com/stainlu/stainful/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/the%20open--source-Stainless-5eead4.svg" alt="the open-source Stainless">
-  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-7c3aed.svg" alt="PRs welcome"></a>
-</p>
+[![License](https://img.shields.io/badge/license-MIT-3da639?style=flat-square)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-3776ab?style=flat-square&logo=python&logoColor=white)](pyproject.toml)
+[![CI](https://img.shields.io/github/actions/workflow/status/stainlu/stainful/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/stainlu/stainful/actions/workflows/ci.yml)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-7c3aed?style=flat-square)](CONTRIBUTING.md)
 
 <img src="assets/architecture.png" alt="stainful — OpenAPI spec + stainless.yml → resolved IR → idiomatic Python SDK" width="100%">
 

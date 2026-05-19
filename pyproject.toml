@@ -48,3 +48,7 @@ target-version = "py310"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Oracles are pinned third-party SDKs (QUALITY_PLAN §3); their own suites are
+# run deliberately by the P3 harness, never by default collection.
+addopts = "--ignore=tests/oracles"
+norecursedirs = ["tests/oracles", "tests/golden"]

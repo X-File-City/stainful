@@ -101,10 +101,10 @@ def test_shape_matches_golden_tapeout(generated):
     # resource class + raw/streaming wrappers, exactly like the hand-written target
     agency_src = (out / "onebusaway" / "resources" / "agency.py").read_text()
     for sym in (
-        "class Agency(SyncAPIResource)",
-        "class AsyncAgency(AsyncAPIResource)",
-        "class AgencyWithRawResponse",
-        "class AgencyWithStreamingResponse",
+        "class AgencyResource(SyncAPIResource)",
+        "class AsyncAgencyResource(AsyncAPIResource)",
+        "class AgencyResourceWithRawResponse",
+        "class AgencyResourceWithStreamingResponse",
         "def retrieve(",
         "timeout: float | httpx.Timeout | None | NotGiven = not_given",
         "cast_to=AgencyRetrieveResponse",

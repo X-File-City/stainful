@@ -17,17 +17,17 @@ from .._core._sentinels import NotGiven, not_given
 from .._core._types import Body, Headers, Query
 from ..types.agency_retrieve_response import AgencyRetrieveResponse
 
-__all__ = ["Agency", "AsyncAgency"]
+__all__ = ["AgencyResource", "AsyncAgencyResource"]
 
 
-class Agency(SyncAPIResource):
+class AgencyResource(SyncAPIResource):
     @cached_property
-    def with_raw_response(self) -> AgencyWithRawResponse:
-        return AgencyWithRawResponse(self)
+    def with_raw_response(self) -> AgencyResourceWithRawResponse:
+        return AgencyResourceWithRawResponse(self)
 
     @cached_property
-    def with_streaming_response(self) -> AgencyWithStreamingResponse:
-        return AgencyWithStreamingResponse(self)
+    def with_streaming_response(self) -> AgencyResourceWithStreamingResponse:
+        return AgencyResourceWithStreamingResponse(self)
 
     def retrieve(
         self,
@@ -55,14 +55,14 @@ class Agency(SyncAPIResource):
         )
 
 
-class AsyncAgency(AsyncAPIResource):
+class AsyncAgencyResource(AsyncAPIResource):
     @cached_property
-    def with_raw_response(self) -> AsyncAgencyWithRawResponse:
-        return AsyncAgencyWithRawResponse(self)
+    def with_raw_response(self) -> AsyncAgencyResourceWithRawResponse:
+        return AsyncAgencyResourceWithRawResponse(self)
 
     @cached_property
-    def with_streaming_response(self) -> AsyncAgencyWithStreamingResponse:
-        return AsyncAgencyWithStreamingResponse(self)
+    def with_streaming_response(self) -> AsyncAgencyResourceWithStreamingResponse:
+        return AsyncAgencyResourceWithStreamingResponse(self)
 
     async def retrieve(
         self,
@@ -90,21 +90,21 @@ class AsyncAgency(AsyncAPIResource):
         )
 
 
-class AgencyWithRawResponse:
-    def __init__(self, agency: Agency) -> None:
+class AgencyResourceWithRawResponse:
+    def __init__(self, agency: AgencyResource) -> None:
         self.retrieve = to_raw_response_wrapper(agency.retrieve)
 
 
-class AsyncAgencyWithRawResponse:
-    def __init__(self, agency: AsyncAgency) -> None:
+class AsyncAgencyResourceWithRawResponse:
+    def __init__(self, agency: AsyncAgencyResource) -> None:
         self.retrieve = async_to_raw_response_wrapper(agency.retrieve)
 
 
-class AgencyWithStreamingResponse:
-    def __init__(self, agency: Agency) -> None:
+class AgencyResourceWithStreamingResponse:
+    def __init__(self, agency: AgencyResource) -> None:
         self.retrieve = to_streamed_response_wrapper(agency.retrieve)
 
 
-class AsyncAgencyWithStreamingResponse:
-    def __init__(self, agency: AsyncAgency) -> None:
+class AsyncAgencyResourceWithStreamingResponse:
+    def __init__(self, agency: AsyncAgencyResource) -> None:
         self.retrieve = async_to_streamed_response_wrapper(agency.retrieve)

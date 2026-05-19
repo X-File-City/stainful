@@ -7,7 +7,7 @@ import httpx
 
 from ._core._base_client import AsyncAPIClient, SyncAPIClient
 from ._core._sentinels import NotGiven, not_given
-from .resources.agency import AsyncAgency, Agency
+from .resources.agency import AsyncAgencyResource, AgencyResource
 
 __all__ = ["OnebusawaySDK", "AsyncOnebusawaySDK"]
 
@@ -15,7 +15,7 @@ _DEFAULT_BASE_URL = "https://api.pugetsound.onebusaway.org"
 
 
 class OnebusawaySDK(SyncAPIClient):
-    agency: Agency
+    agency: AgencyResource
 
     def __init__(
         self,
@@ -41,11 +41,11 @@ class OnebusawaySDK(SyncAPIClient):
             # auth: send_as_query_param `key` (config overlay)
             auth_query={"key": api_key},
         )
-        self.agency = Agency(self)
+        self.agency = AgencyResource(self)
 
 
 class AsyncOnebusawaySDK(AsyncAPIClient):
-    agency: AsyncAgency
+    agency: AsyncAgencyResource
 
     def __init__(
         self,
@@ -70,4 +70,4 @@ class AsyncOnebusawaySDK(AsyncAPIClient):
             http_client=http_client,
             auth_query={"key": api_key},
         )
-        self.agency = AsyncAgency(self)
+        self.agency = AsyncAgencyResource(self)

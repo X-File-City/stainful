@@ -1,0 +1,98 @@
+"""Slice 1 conformance: the real OneBusAway Stainless config must load cleanly,
+and malformed input must fail loud with a source location.
+"""
+
+from pathlib import Path
+
+import pytest
+
+from stainful.config import load_config
+from stainful.config.model import CLIENT_KEY, SHARED_KEY
+from stainful.errors import ConfigError
+
+FIXTURE = Path(__file__).parent / "fixtures" / "onebusaway" / "stainless-config.yml"
+
+
+def test_onebusaway_config_loads():
+    cfg = load_config(str(FIXTURE))
+
+    # organization
+    assert cfg.organization.name == "onebusaway-sdk"
+    assert cfg.organization.docs == "https://developer.onebusaway.org"
+
+    # resources: real resources only; $shared/$client lifted out
+    assert SHARED_KEY not in cfg.resources
+    assert CLIENT_KEY not in cfg.resources
+    assert "agency" in cfg.resources
+    assert "trip-details" in cfg.resources  # hyphenated name preserved
+
+    # string shorthand normalized
+    m = cfg.resources["agency"].methods["retrieve"]
+    assert m.endpoint is not None
+    assert m.endpoint.verb == "get"
+    assert m.endpoint.path == "/api/where/agency/{agencyID}.json"
+
+    # object form parsed, with paginated flag
+    lm = cfg.resources["agencies_with_coverage"].methods["list"]
+    assert lm.endpoint.verb == "get"
+    assert lm.paginated is False
+
+    # a resource with two methods
+    ad = cfg.resources["arrival_and_departure"].methods
+    assert set(ad) == {"list", "retrieve"}
+
+    # $shared.models lifted
+    assert cfg.shared_models["response_wrapper"].openapi_ref == "ResponseWrapper"
+    assert cfg.shared_models["references"].openapi_ref == "Reference"
+
+    # targets
+    assert cfg.targets["python"].package_name == "onebusaway"
+    assert cfg.targets["python"].publish == {"pypi": True}
+    assert cfg.targets["java"].reverse_domain == "org.onebusaway"
+
+    # client_settings.opts (auth via query param)
+    api_key = cfg.client_settings.opts["api_key"]
+    assert api_key.read_env == "ONEBUSAWAY_API_KEY"
+    assert api_key.send_as_query_param == "key"
+    assert api_key.auth["security_scheme"] == "ApiKeyAuth"
+
+    # environments + settings
+    assert cfg.environments["production"] == "https://api.pugetsound.onebusaway.org"
+    assert cfg.settings["license"] == "Apache-2.0"
+
+    # forward-compat: unknown top-level keys preserved, not dropped
+    assert "readme" in cfg.extra
+    assert "query_settings" in cfg.extra
+
+
+def test_strict_mode_flags_unknown_keys():
+    # OneBusAway uses `readme`/`query_settings`, which we don't model yet.
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(FIXTURE), strict=True)
+    assert "readme" in str(exc.value) or "query_settings" in str(exc.value)
+
+
+def test_bad_endpoint_verb_fails_with_location(tmp_path):
+    bad = tmp_path / "bad.yml"
+    bad.write_text(
+        "organization:\n"
+        "  name: x\n"
+        "resources:\n"
+        "  thing:\n"
+        "    methods:\n"
+        "      list: fetch /things\n"  # 'fetch' is not a valid verb
+    )
+    with pytest.raises(ConfigError) as exc:
+        load_config(str(bad))
+    msg = str(exc.value)
+    assert "invalid endpoint" in msg
+    assert "bad.yml:" in msg  # carries source location
+
+
+def test_missing_organization_fails():
+    import tempfile
+    with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False) as f:
+        f.write("resources: {}\n")
+        path = f.name
+    with pytest.raises(ConfigError, match="organization"):
+        load_config(path)

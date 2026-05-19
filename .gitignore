@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+# generator output during local testing
+/out/
+/scratch/
+
+# golden _core is copied from src/stainful/runtime at test time
+tests/golden/*/*/_core/

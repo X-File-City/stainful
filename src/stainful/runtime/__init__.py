@@ -1,8 +1,9 @@
-"""Hand-written SDK runtime (DESIGN §5, slice 4).
+"""Hand-written SDK runtime.
 
-Vendored verbatim by the emitter into `<generated_pkg>/_core/` (DESIGN §5
-vendoring decision). Brand-agnostic: the catchable symbols here are identical
-across every generated SDK — that sameness *is* the drop-in contract.
+Vendored verbatim by the emitter into `<generated_pkg>/_core/`. This code is
+licensed MIT (see the project LICENSE) and travels into generated SDKs under
+the same terms. Brand-agnostic: the catchable symbols here are identical
+across every generated SDK — that sameness is the drop-in contract.
 
 Submodules use relative imports so this package works unchanged when copied
 under another package name. The golden tape-out target

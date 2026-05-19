@@ -30,3 +30,7 @@ tests/quality/fidelity_onebusaway.json
 tests/quality/upstream_compat.json
 tests/quality/type_parity.json
 demo/out/
+
+# stray uv artifacts if `uv run` is mistakenly run inside a generated SDK
+examples/*/sdk/.venv/
+examples/*/sdk/uv.lock

@@ -606,6 +606,8 @@ class _Emitter:
         ))
         return f'''{_HEADER}from __future__ import annotations
 
+from datetime import date, datetime  # noqa: F401
+from decimal import Decimal  # noqa: F401
 from functools import cached_property
 {typing_import}
 import httpx

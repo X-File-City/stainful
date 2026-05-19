@@ -34,10 +34,23 @@ class Operation:
     path: str
     verb: str
     raw: dict
+    # OpenAPI: parameters declared on the PATH ITEM apply to every operation
+    # under that path; operation-level params override by (name, in).
+    path_item_params: tuple[dict, ...] = ()
 
     @property
     def parameters(self) -> list[dict]:
-        return list(self.raw.get("parameters", []) or [])
+        op_params = list(self.raw.get("parameters", []) or [])
+        seen = {
+            (p.get("name"), p.get("in"))
+            for p in op_params
+            if isinstance(p, dict)
+        }
+        merged = list(op_params)
+        for p in self.path_item_params:
+            if isinstance(p, dict) and (p.get("name"), p.get("in")) not in seen:
+                merged.append(p)
+        return merged
 
     @property
     def request_body(self) -> dict | None:
@@ -93,10 +106,13 @@ class OpenAPIDocument:
         for path, item in (self.raw.get("paths", {}) or {}).items():
             if not isinstance(item, dict):
                 continue
+            shared = tuple(item.get("parameters", []) or [])
             for verb in _HTTP_VERBS:
                 op = item.get(verb)
                 if isinstance(op, dict):
-                    yield Operation(path=path, verb=verb, raw=op)
+                    yield Operation(
+                        path=path, verb=verb, raw=op, path_item_params=shared
+                    )
 
 
 def load_spec(path: str) -> OpenAPIDocument:

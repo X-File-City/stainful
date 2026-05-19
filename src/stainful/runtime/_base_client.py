@@ -33,6 +33,9 @@ _INITIAL_RETRY_DELAY = 0.5
 
 
 class _BaseClient:
+    # set by Sync/AsyncAPIClient subclasses; declared here for type-checkers
+    _client: Any
+
     def __init__(
         self,
         *,
@@ -161,8 +164,9 @@ class SyncAPIClient(_BaseClient):
                 time.sleep(self._retry_delay(None, attempt))
                 self._prepare_retry(request)
                 continue
+            assert last_exc is not None
             raise last_exc
-        raise last_exc  # pragma: no cover
+        raise RuntimeError("unreachable")  # pragma: no cover
 
     def _get(self, path: str, *, options: RequestOptions, cast_to: type | None) -> Any:
         return self._request("GET", path, options=options, cast_to=cast_to)
@@ -233,8 +237,9 @@ class AsyncAPIClient(_BaseClient):
                 await asyncio.sleep(self._retry_delay(None, attempt))
                 self._prepare_retry(request)
                 continue
+            assert last_exc is not None
             raise last_exc
-        raise last_exc  # pragma: no cover
+        raise RuntimeError("unreachable")  # pragma: no cover
 
     async def _get(self, path: str, *, options: RequestOptions,
                     cast_to: type | None) -> Any:

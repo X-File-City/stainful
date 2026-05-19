@@ -18,4 +18,5 @@ tests/golden/*/*/_core/
 # internal-only docs (kept locally, not part of the public repo)
 RESEARCH.md
 DESIGN.md
+QUALITY_PLAN.md
 .venv312/

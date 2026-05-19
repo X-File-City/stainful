@@ -3,6 +3,31 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.1.0] — 2026-05-20
+
+First public release. **The open-source Stainless** — point your existing
+`stainless.yml` at it and get an idiomatic Python SDK.
+
+### Added
+- End-to-end generator: `stainless.yml` + OpenAPI 3.x → idiomatic Python SDK
+  (typed pydantic models, typed error hierarchy, retries w/ backoff +
+  `Retry-After` + idempotency, auto-pagination, SSE streaming, sync+async,
+  per-file `types/`, `*Params` TypedDicts, vendored runtime).
+- Quality harness measuring stainful's output against the **real**
+  Stainless-generated OneBusAway SDK, gated in CI (no-regression baselines).
+
+### Verified vs the real Stainless SDK (CI-gated)
+- resource-method recall **1.00**, method-signature match **0.99**
+- model-name recall **0.90**, generated code **mypy-clean (0 errors)**
+- **28/29** of Stainless's own test files import unchanged against our output
+- regeneration is bit-stable; the repo dogfoods itself
+  (`examples/onebusaway/sdk`, guard-enforced)
+
+### Known gaps (honest)
+Python only; model-name long tail (~10%: a few `*Params`, `SearchFor*`
+naming, `trip-details` singular); P3 behavioral-via-Prism not yet run.
+Not affiliated with Stainless or Anthropic.
+
 ## [0.0.1] — 2026-05-19
 
 First working release. **v1 complete (slices 1–6), 37 tests green.**

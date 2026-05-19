@@ -8,4 +8,9 @@ Pipeline (DESIGN.md §1), four public functions, one per module:
     emit.python.emit(api, out_dir)    -> None
 """
 
-__version__ = "0.0.1"
+from importlib.metadata import PackageNotFoundError, version
+
+try:  # single source of truth = pyproject; never drifts
+    __version__ = version("stainful")
+except PackageNotFoundError:  # not installed (raw source tree)
+    __version__ = "0.0.0+dev"

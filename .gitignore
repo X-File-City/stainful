@@ -26,3 +26,5 @@ QUALITY_PLAN.md
 
 # living fidelity scorecard (regenerated each run); baseline is the committed gate
 tests/quality/fidelity_onebusaway.json
+
+tests/quality/upstream_compat.json

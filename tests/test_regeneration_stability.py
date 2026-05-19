@@ -113,19 +113,15 @@ def test_additive_spec_change_does_not_churn_existing_endpoints(tmp_path):
         "existing endpoint code churned on an additive spec change"
     )
 
-    # The existing endpoint's response model (path-named per operation) must
-    # be byte-stable inside models.py. models.py as a whole legitimately grows
-    # with the NEW endpoint's model — that is not churn of existing code.
-    def widget_model(src: str) -> str:
-        # the class block, normalized for file-position trailing whitespace
-        # (the model lines are what must not churn, not where it sits)
-        i = src.index("class WidgetsRetrieveResponse(")
-        return src[i:].split("\n\n\n", 1)[0].rstrip()
-
-    assert "class WidgetsRetrieveResponse(" in before["types/models.py"]
-    assert widget_model(before["types/models.py"]) == widget_model(
-        after["types/models.py"]
-    ), "existing endpoint's model churned on an additive change"
+    # Per-file types/ layout: the existing endpoint owns its own model module.
+    # Adding a new endpoint must not touch that file at all — the cleanest
+    # possible statement of the no-churn property.
+    mod = "types/widgets_retrieve_response.py"
+    assert mod in before and mod in after
+    assert "class WidgetsRetrieveResponse(" in before[mod]
+    assert before[mod] == after[mod], (
+        "existing endpoint's model module churned on an additive change"
+    )
 
     # New endpoint actually appeared (sanity: regeneration did something).
     assert "resources/gadgets.py" in after

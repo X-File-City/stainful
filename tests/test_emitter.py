@@ -119,7 +119,10 @@ def test_keyword_and_punctuation_field_names_are_safe(generated):
     # OneBusAway has a `from` field (keyword) and `git.branch` (punctuation);
     # both must be mangled+aliased so models.py is valid and importable.
     out, _ = generated
-    models = (out / "onebusaway" / "types" / "models.py").read_text()
+    # per-file types/ layout — scan every generated type module
+    models = "\n".join(
+        p.read_text() for p in (out / "onebusaway" / "types").glob("*.py")
+    )
     assert "from_:" in models or 'alias="from"' in models
     # `git.branch` is valid ONLY inside the alias string, never as a field name
     assert 'alias="git.branch"' in models

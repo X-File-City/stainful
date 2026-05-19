@@ -88,7 +88,7 @@ def test_oneof_discriminator_is_a_real_tagged_union(chat_sdk):
     _, chat = chat_sdk
     from pydantic import TypeAdapter
 
-    from chat.types.models import Event
+    from chat.types import Event  # per-file layout; package re-exports
 
     err = TypeAdapter(Event).validate_python({"type": "error", "code": 7})
     msg = TypeAdapter(Event).validate_python({"type": "message", "text": "hi"})
@@ -127,7 +127,11 @@ def test_streaming_overloads_present_in_source(chat_sdk):
     src = (out / "chat" / "resources" / "completions.py").read_text()
     assert src.count("@overload") >= 2          # stream False/True overloads
     assert "Stream[CompletionsCreateEvent]" in src  # typed event stream return
-    assert 'Field(discriminator="type")' not in src  # union lives in models.py
-    models = (out / "chat" / "types" / "models.py").read_text()
-    assert 'Field(discriminator="type")' in models
-    assert 'Literal[' in models                  # variant tag narrowed
+    assert 'Field(discriminator="type")' not in src  # union lives in types/
+    # per-file layout: the discriminated union + its Literal-narrowed variants
+    # live in the shared module (Event is $shared.models)
+    types_src = "\n".join(
+        p.read_text() for p in (out / "chat" / "types").glob("*.py")
+    )
+    assert 'Field(discriminator="type")' in types_src
+    assert "Literal[" in types_src               # variant tag narrowed

@@ -91,6 +91,11 @@ class _Emitter:
         self._classes: dict[str, str] = {}
         self._aliases: dict[str, str] = {}
         self._building: set[str] = set()
+        # per-file types/ layout: which module each class/alias belongs to.
+        # `_cur_module` is the render-context (single synchronous pass).
+        self._cur_module: str = "shared"
+        self._class_module: dict[str, str] = {}
+        self._alias_module: dict[str, str] = {}
 
     def _model_name(self, component: str) -> str:
         """Emitted class name for a component schema (shared-aware)."""
@@ -168,6 +173,7 @@ class _Emitter:
             lines.append(self._field(p, cls, seen))
         self._building.discard(cls)
         self._classes[cls] = "\n".join(lines)
+        self._class_module.setdefault(cls, self._cur_module)
         return cls
 
     def _emit_named(self, component: str) -> str:
@@ -177,13 +183,18 @@ class _Emitter:
         comp = self.api.models.get(component)
         if comp is None:
             return disp
-        if isinstance(comp.type, ObjectType):
-            return self._emit_object(disp, comp.type, frozenset({component}))
-        # alias / enum / scalar newtype emitted after classes
-        self._aliases[disp] = (
-            f"{disp} = {self._render(comp.type, disp, frozenset({component}))}"
-        )
-        return disp
+        # $shared.models / promoted / disc-variant classes live in `shared`.
+        prev, self._cur_module = self._cur_module, "shared"
+        try:
+            if isinstance(comp.type, ObjectType):
+                return self._emit_object(disp, comp.type, frozenset({component}))
+            self._aliases[disp] = (
+                f"{disp} = {self._render(comp.type, disp, frozenset({component}))}"
+            )
+            self._alias_module[disp] = "shared"
+            return disp
+        finally:
+            self._cur_module = prev
 
     @staticmethod
     def _py_field_name(pname: str) -> str:
@@ -222,39 +233,69 @@ class _Emitter:
             return f'    {py}: {ann} = Field(default=None, alias="{p.name}")'
         return f"    {py}: {ann} = None"
 
+    _MODELS_PRELUDE = (
+        "from __future__ import annotations\n\n"
+        "from datetime import date, datetime  # noqa: F401\n"
+        "from decimal import Decimal  # noqa: F401\n"
+        "from typing import (  # noqa: F401\n"
+        "    Annotated, Any, Dict, List, Literal, Optional, Union,\n)\n\n"
+        "from pydantic import Field  # noqa: F401\n\n"
+        "from .._core._models import BaseModel\n"
+    )
+
     def _emit_models(self) -> None:
-        # Classes are registered as a side effect of rendering each method's
-        # response/body (done while emitting resource files, before this).
-        # Aliases come after classes (a discriminated-union alias is an
-        # executed assignment that must follow its variant classes).
-        body = (
-            _HEADER
-            + "from __future__ import annotations\n\n"
-            + "from datetime import date, datetime  # noqa: F401\n"
-            + "from decimal import Decimal  # noqa: F401\n"
-            + "from typing import (  # noqa: F401\n"
-            + "    Annotated, Any, Dict, List, Literal, Optional, Union,\n)\n\n"
-            + "from pydantic import Field  # noqa: F401\n\n"
-            + "from .._core._models import BaseModel\n\n\n"
-            + "\n\n\n".join(
-                list(self._classes.values()) + list(self._aliases.values())
+        # Per-file types/ layout (Stainless): one module per operation
+        # (`agency_retrieve_response.py`) + `shared.py`. Classes/aliases were
+        # registered while rendering resources; each carries its module.
+        tdir = self.root / "types"
+        tdir.mkdir(parents=True, exist_ok=True)
+
+        # group: module -> ordered [(name, source, is_alias)]
+        modules: dict[str, list[tuple[str, str, bool]]] = {}
+        for name, src in self._classes.items():
+            modules.setdefault(self._class_module.get(name, "shared"), []).append(
+                (name, src, False)
             )
-            + "\n"
-        )
-        (self.root / "types").mkdir(parents=True, exist_ok=True)
-        (self.root / "types" / "models.py").write_text(body)
-        exported = sorted(set(self._classes) | set(self._aliases))
-        (self.root / "types" / "__init__.py").write_text(
-            _HEADER
-            + (f"from .models import {', '.join(exported)}\n\n" if exported else "")
-            + f"__all__ = {exported!r}\n"
-        )
+        for name, src in self._aliases.items():
+            modules.setdefault(self._alias_module.get(name, "shared"), []).append(
+                (name, src, True)
+            )
+
+        all_names = set(self._classes) | set(self._aliases)
+        owner = {**self._class_module, **self._alias_module}
+        for mod, items in modules.items():
+            classes = [s for _n, s, a in items if not a]
+            aliases = [s for _n, s, a in items if a]
+            blob = "\n".join(classes + aliases)
+            # import names that live in OTHER modules (shared bases, variants)
+            cross: dict[str, list[str]] = {}
+            for nm in sorted(all_names):
+                o = owner.get(nm, "shared")
+                if o != mod and re.search(rf"\b{re.escape(nm)}\b", blob):
+                    cross.setdefault(o, []).append(nm)
+            xi = "".join(
+                f"from .{o} import {', '.join(sorted(ns))}\n"
+                for o, ns in sorted(cross.items())
+            )
+            (tdir / f"{mod}.py").write_text(
+                _HEADER + self._MODELS_PRELUDE + (xi and "\n" + xi) + "\n\n"
+                + "\n\n\n".join(classes + aliases) + "\n"
+            )
+
+        exported = sorted(all_names)
+        init = _HEADER + "from __future__ import annotations\n\n"
+        for mod, items in sorted(modules.items()):
+            names = sorted(n for n, _s, _a in items)
+            init += f"from .{mod} import {', '.join(names)}\n"
+        init += f"\n__all__ = {exported!r}\n"
+        (tdir / "__init__.py").write_text(init)
 
     # --- methods / resources ---------------------------------------------
     def _return_type(self, m: Method, resource: str) -> str:
         for status in ("200", "201", "2XX", "default"):
             if status in m.responses:
                 path = f"{pascal(resource)}{pascal(m.name)}Response"
+                self._cur_module = f"{snake(resource)}_{snake(m.name)}_response"
                 return self._render(m.responses[status], path, frozenset())
         return "object"
 
@@ -275,6 +316,7 @@ class _Emitter:
         from stainful.ir.model import ContentType
 
         root = f"{pascal(resource)}{pascal(m.name)}Params"
+        self._cur_module = f"{snake(resource)}_{snake(m.name)}_params"
         if m.body.content_type != ContentType.JSON:
             return [("body", None, self._render(m.body.type, root, frozenset()),
                      m.body.required)]
@@ -306,6 +348,7 @@ class _Emitter:
         }[m.http_verb]
         has_body_arg = verb in ("_post", "_put", "_patch")
         body_props = self._body_props(m, resource) if has_body_arg else []
+        self._cur_module = f"{snake(resource)}_{snake(m.name)}_params"
         query_props = [
             (self._py_field_name(p.name), p.name,
              self._render(p.type,
@@ -315,6 +358,8 @@ class _Emitter:
         ]
         st = m.streaming
         disc = st.discriminator if st else None
+        if st:
+            self._cur_module = f"{snake(resource)}_{snake(m.name)}_response"
         event_ann = (
             self._render(st.event_type,
                          f"{pascal(resource)}{pascal(m.name)}Event", frozenset())
@@ -471,7 +516,7 @@ class _Emitter:
         known = set(self._classes) | set(self._aliases)
         used = sorted(n for n in known if re.search(rf"\b{re.escape(n)}\b", scan))
         models_import = (
-            "from ..types.models import " + ", ".join(used) + "\n" if used else ""
+            "from ..types import " + ", ".join(used) + "\n" if used else ""
         )
         typing_needed = [
             t for t in ("Literal", "overload") if re.search(rf"\b{t}\b", scan)

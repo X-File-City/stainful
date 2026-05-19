@@ -33,10 +33,17 @@ as-is.
 ## Quickstart
 
 ```bash
+pip install stainful
+
+# generate an idiomatic Python SDK from your OpenAPI spec + stainless.yml
+stainful generate --spec openapi.yml --config stainless.yml --out ./sdk
+```
+
+Or from source (and to run the conformance harness):
+
+```bash
 git clone https://github.com/stainlu/stainful && cd stainful
 uv venv && uv pip install -e ".[dev,generated-runtime]"
-
-# generate an idiomatic Python SDK from a real, committed Stainless config
 uv run stainful generate \
   --spec   examples/onebusaway/openapi.yml \
   --config examples/onebusaway/stainless.yml \

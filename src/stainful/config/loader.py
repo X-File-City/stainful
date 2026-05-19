@@ -43,6 +43,16 @@ _KNOWN_TOP = {
     "client_settings", "environments", "pagination", "security",
     "security_schemes", "streaming",
 }
+# Valid Stainless top-level keys we don't act on yet. These are PRESERVED
+# silently — a real `stainless.yml` legitimately has them; warning on them
+# would be wrong (implies a problem where there is none). Only *genuinely*
+# unrecognized keys (typos / unknown) get a soft warning — that's the signal
+# worth keeping.
+_KNOWN_DEFERRED = {
+    "query_settings", "multipart_settings", "readme", "custom_casings",
+    "constants", "diagnostics", "unspecified_endpoints", "codeflow",
+    "openapi", "$schema",
+}
 _KNOWN_METHOD = {
     "endpoint", "paginated", "unwrap_response", "type", "positional_params",
     "body_param_name", "skip_test_reason", "streaming",
@@ -248,12 +258,19 @@ class _Loader:
                 )
             )
 
-        # preserve unknown top-level keys for forward compatibility
+        # Preserve every non-modeled key for forward compatibility. Warn ONLY
+        # for keys that aren't valid Stainless config at all (likely typos) —
+        # known-but-deferred Stainless keys are preserved silently.
         for k, v in data.items():
-            if k not in _KNOWN_TOP:
-                cfg.extra[k] = v
-                self._warn(f"unrecognized top-level key {k!r} (preserved, not yet "
-                           f"acted on)", data, k)
+            if k in _KNOWN_TOP:
+                continue
+            cfg.extra[k] = v
+            if k not in _KNOWN_DEFERRED:
+                self._warn(
+                    f"unrecognized top-level key {k!r} (not valid Stainless "
+                    f"config — typo? preserved anyway)",
+                    data, k,
+                )
 
         return cfg
 

@@ -60,16 +60,30 @@ def test_onebusaway_config_loads():
     assert cfg.environments["production"] == "https://api.pugetsound.onebusaway.org"
     assert cfg.settings["license"] == "Apache-2.0"
 
-    # forward-compat: unknown top-level keys preserved, not dropped
+    # forward-compat: deferred Stainless keys preserved (not dropped), and
+    # NOT warned about — they're valid config, just not acted on yet.
     assert "readme" in cfg.extra
     assert "query_settings" in cfg.extra
 
 
-def test_strict_mode_flags_unknown_keys():
-    # OneBusAway uses `readme`/`query_settings`, which we don't model yet.
-    with pytest.raises(ConfigError) as exc:
-        load_config(str(FIXTURE), strict=True)
-    assert "readme" in str(exc.value) or "query_settings" in str(exc.value)
+def test_real_config_is_clean_even_in_strict(tmp_path):
+    # A real stainless.yml uses only valid keys (some deferred). It must load
+    # with ZERO diagnostics even in strict mode — no false-positive warnings
+    # (this is the clean-demo / good-drop-in-UX guarantee).
+    load_config(str(FIXTURE), strict=True)  # must not raise
+
+
+def test_strict_mode_flags_genuinely_unknown_keys(tmp_path):
+    bad = tmp_path / "typo.yml"
+    bad.write_text(
+        "organization:\n  name: x\n"
+        "resorces:\n  thing: {}\n"          # typo'd 'resources'
+    )
+    with pytest.raises(ConfigError, match="resorces"):
+        load_config(str(bad), strict=True)
+    # lenient mode still loads it (preserved), just warns
+    cfg = load_config(str(bad))
+    assert "resorces" in cfg.extra
 
 
 def test_bad_endpoint_verb_fails_with_location(tmp_path):

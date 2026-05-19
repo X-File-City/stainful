@@ -75,6 +75,10 @@ class _Builder:
         self.config = config
         self.loc = SourceLoc(doc.source)
         self.ops = {(o.verb, o.path): o for o in doc.operations()}
+        # component schemas declared shared via config `$shared.models`
+        self._shared_components = {
+            mc.openapi_ref for mc in config.shared_models.values() if mc.openapi_ref
+        }
 
     # --- type construction (the core) -------------------------------------
     def _is_nullable(self, schema: dict) -> bool:
@@ -153,7 +157,31 @@ class _Builder:
             return self._type(resolve_ref(self.doc, ref).target)
 
         if "allOf" in schema:
-            return self._object(flatten_allof(self.doc, schema))
+            # Split shared-$ref members into base classes (Stainless emits
+            # `class XResponse(ResponseWrapper): ...`); merge only the rest.
+            members = schema["allOf"]
+            bases: list[ModelRef] = []
+            rest = []
+            for m in members:
+                ref = isinstance(m, dict) and m.get("$ref")
+                if ref and ref.startswith(_SCHEMA_PREFIX) and (
+                    ref[len(_SCHEMA_PREFIX):] in self._shared_components
+                ):
+                    bases.append(ModelRef(name=ref[len(_SCHEMA_PREFIX):]))
+                else:
+                    rest.append(m)
+            merged = flatten_allof(
+                self.doc, {**{k: v for k, v in schema.items() if k != "allOf"},
+                           "allOf": rest} if rest else
+                {k: v for k, v in schema.items() if k != "allOf"}
+            )
+            obj = self._object(merged)
+            if bases and isinstance(obj, ObjectType):
+                return ObjectType(
+                    properties=obj.properties, extra=obj.extra,
+                    bases=tuple(bases),
+                )
+            return obj
 
         for key in ("oneOf", "anyOf"):
             if key in schema:
@@ -231,7 +259,10 @@ class _Builder:
             )
             if schema is None:
                 continue
-            out[str(status)] = self._type(flatten_allof(self.doc, schema))
+            # Do NOT pre-flatten: _type's allOf branch splits shared bases
+            # into inheritance (Stainless envelope shape). Pre-flattening here
+            # would merge the shared base away before _type sees it.
+            out[str(status)] = self._type(schema)
         return out
 
     # --- methods / resources ----------------------------------------------

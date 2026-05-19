@@ -94,6 +94,9 @@ class ObjectType(Type):
     properties: tuple[Property, ...]
     # additionalProperties as a fallback value type, if the object is open.
     extra: Type | None = None
+    # allOf members that resolve to *shared* models become base classes
+    # (Stainless emits `class XResponse(ResponseWrapper): ...`), not a merge.
+    bases: tuple[ModelRef, ...] = ()
 
 
 @dataclass(frozen=True)

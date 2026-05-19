@@ -103,12 +103,21 @@ def test_allof_envelope_typed_with_modelref_data():
         for m in r.methods if m.name == "retrieve"
     )
     resp = retrieve.responses["200"]
-    assert isinstance(resp, ObjectType)        # merged envelope
+    assert isinstance(resp, ObjectType)
+    # Stainless envelope shape: `class XResponse(ResponseWrapper)` — the shared
+    # allOf member becomes a BASE, not merged in. `code/currentTime/...` live
+    # on the ResponseWrapper base model, not on the envelope itself.
+    assert ModelRef("ResponseWrapper") in resp.bases
     names = {p.name for p in resp.properties}
-    assert {"code", "currentTime", "text", "version", "data"} <= names
+    assert names == {"data"}                          # only the inline member
     data = _prop(resp, "data")
-    assert data.type == ModelRef("AgencyResponse")  # inner $ref preserved as ref
-    assert data.required is True                    # from the inline allOf member
+    assert data.type == ModelRef("AgencyResponse")    # inner $ref preserved
+    assert data.required is True
+    # the inherited fields are defined on the shared base model
+    base = _api().models["ResponseWrapper"].type
+    assert {"code", "currentTime", "text", "version"} <= {
+        p.name for p in base.properties
+    }
 
 
 def test_missing_operation_is_loud_error_not_fallback(tmp_path):

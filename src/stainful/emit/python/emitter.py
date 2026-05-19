@@ -186,7 +186,9 @@ class _Emitter:
 
     def _model_class(self, name: str, obj: ObjectType) -> str:
         disp = self._model_name(name)
-        lines = [f"class {disp}(BaseModel):"]
+        # allOf shared members -> base classes (Stainless inheritance shape).
+        bases = [self._model_name(b.name) for b in obj.bases] or ["BaseModel"]
+        lines = [f"class {disp}({', '.join(bases)}):"]
         if not obj.properties:
             lines.append("    pass")
         for p in obj.properties:

@@ -27,6 +27,28 @@ def pascal(name: str) -> str:
     return "".join(p[:1].upper() + p[1:] for p in parts if p)
 
 
+def singularize(word: str) -> str:
+    """English-ish singular for an array field's path segment.
+
+    Stainless names a nested array-item model after the SINGULAR of the field
+    (`arrivalsAndDepartures: [X]` -> `...ArrivalsAndDeparture`,
+    `agencies` -> `Agency`, `trips` -> `Trip`). Pragmatic ruleset — covers the
+    real OneBusAway corpus; not a full inflector.
+    """
+    w = word
+    if len(w) > 2 and w.endswith("ies"):
+        return w[:-3] + "y"                     # Agencies -> Agency
+    if w.endswith(("ses", "xes", "zes", "ches", "shes")):
+        return w[:-2]                            # Boxes -> Box
+    if (
+        w.endswith("s")
+        and not w.endswith(("ss", "us", "is", "Status"))
+        and len(w) > 1
+    ):
+        return w[:-1]                            # Trips -> Trip
+    return w
+
+
 # Tokens Stainless renders ALL-CAPS in class names (verified: the real
 # Stainless-generated OneBusAway SDK client class is `OnebusawaySDK`).
 _INITIALISMS = {"sdk", "api", "id", "url", "http", "io", "ai", "sql", "cli"}

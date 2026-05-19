@@ -17,7 +17,7 @@ import re
 import shutil
 from pathlib import Path
 
-from stainful.emit.python._casing import brand, package, pascal, snake
+from stainful.emit.python._casing import brand, package, pascal, singularize, snake
 from stainful.errors import StainfulError
 from stainful.ir.model import API, HTTPVerb, Method, Resource, SecurityScheme
 from stainful.ir.types import (
@@ -220,7 +220,11 @@ class _Emitter:
                 f'    {py}: {lit} = Field(alias="{p.name}")'
                 if py != p.name else f"    {py}: {lit}"
             )
-        ann = self._render(p.type, f"{owner_cls}{pascal(p.name)}", seen)
+        # Stainless names an array-item model after the SINGULAR of the field.
+        seg = pascal(p.name)
+        if isinstance(p.type, ArrayType):
+            seg = singularize(seg)
+        ann = self._render(p.type, f"{owner_cls}{seg}", seen)
         if p.nullable:
             ann = f"Optional[{ann}]"
         needs_alias = py != p.name

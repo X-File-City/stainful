@@ -1,10 +1,9 @@
-<h1 align="center">stainful</h1>
+<h1>stainful&nbsp;&nbsp;<sub><sub>the open-source Stainless</sub></sub></h1>
 
-<p align="center">
-  <img src="assets/architecture.png" alt="stainful — OpenAPI spec + stainless.yml → resolved IR → idiomatic Python SDK" width="100%">
-</p>
+**Generate an idiomatic Python SDK from an OpenAPI spec and a `stainless.yml`.**
+Open source. Runs locally and in CI. No account, no hosted service.
 
-<p align="center">
+<p>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg" alt="Python 3.10+">
   <a href="https://github.com/stainlu/stainful/actions/workflows/ci.yml"><img src="https://github.com/stainlu/stainful/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -12,10 +11,7 @@
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-7c3aed.svg" alt="PRs welcome"></a>
 </p>
 
-<p align="center">
-  <b>Generate an idiomatic Python SDK from an OpenAPI spec and a <code>stainless.yml</code>.</b><br>
-  Open source. Runs locally and in CI. No account, no hosted service.
-</p>
+<img src="assets/architecture.png" alt="stainful — OpenAPI spec + stainless.yml → resolved IR → idiomatic Python SDK" width="100%">
 
 ---
 

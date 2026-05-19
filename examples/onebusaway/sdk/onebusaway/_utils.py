@@ -4,7 +4,28 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Any
 
-__all__ = ["parse_date", "parse_datetime", "is_dict", "is_list", "is_mapping"]
+__all__ = [
+    "parse_date", "parse_datetime", "is_dict", "is_list", "is_mapping",
+    "PropertyInfo",
+]
+
+
+class PropertyInfo:
+    """Annotated-metadata marker (Stainless-compatible): carries the wire
+    `alias` / `format` / `discriminator` for a request-params field. Used as
+    `Annotated[T, PropertyInfo(alias="wireName")]` in *Params TypedDicts.
+    """
+
+    def __init__(self, *, alias=None, format=None, discriminator=None):
+        self.alias = alias
+        self.format = format
+        self.discriminator = discriminator
+
+    def __repr__(self):
+        kw = ", ".join(
+            f"{k}={v!r}" for k, v in vars(self).items() if v is not None
+        )
+        return f"PropertyInfo({kw})"
 
 
 def parse_datetime(value: Any) -> datetime:

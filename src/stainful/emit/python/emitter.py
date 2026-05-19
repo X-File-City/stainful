@@ -58,7 +58,28 @@ _UTILS_SRC = '''from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Any
 
-__all__ = ["parse_date", "parse_datetime", "is_dict", "is_list", "is_mapping"]
+__all__ = [
+    "parse_date", "parse_datetime", "is_dict", "is_list", "is_mapping",
+    "PropertyInfo",
+]
+
+
+class PropertyInfo:
+    """Annotated-metadata marker (Stainless-compatible): carries the wire
+    `alias` / `format` / `discriminator` for a request-params field. Used as
+    `Annotated[T, PropertyInfo(alias="wireName")]` in *Params TypedDicts.
+    """
+
+    def __init__(self, *, alias=None, format=None, discriminator=None):
+        self.alias = alias
+        self.format = format
+        self.discriminator = discriminator
+
+    def __repr__(self):
+        kw = ", ".join(
+            f"{k}={v!r}" for k, v in vars(self).items() if v is not None
+        )
+        return f"PropertyInfo({kw})"
 
 
 def parse_datetime(value: Any) -> datetime:
@@ -289,9 +310,10 @@ class _Emitter:
         "from datetime import date, datetime  # noqa: F401\n"
         "from decimal import Decimal  # noqa: F401\n"
         "from typing import (  # noqa: F401\n"
-        "    Annotated, Any, Dict, List, Literal, Optional, Union,\n)\n\n"
+        "    Annotated, Any, Dict, List, Literal, Optional, TypedDict, Union,\n)\n\n"
         "from pydantic import Field  # noqa: F401\n\n"
-        "from .._core._models import BaseModel\n"
+        "from .._core._models import BaseModel  # noqa: F401\n"
+        "from .._utils import PropertyInfo  # noqa: F401\n"
     )
 
     def _emit_models(self) -> None:
@@ -387,6 +409,24 @@ class _Emitter:
             )
         return out
 
+    def _emit_params_type(self, resource: str, m: Method, body_props, query_props):
+        fields = list(body_props) + [(p[0], p[1], p[2], False) for p in query_props]
+        if not fields:
+            return
+        name = f"{pascal(resource)}{pascal(m.name)}Params"
+        if name in self._classes:
+            return
+        lines = [f"class {name}(TypedDict, total=False):"]
+        for py, wire, ann, *_ in fields:
+            if wire and py != wire:
+                lines.append(
+                    f'    {py}: Annotated[{ann}, PropertyInfo(alias="{wire}")]'
+                )
+            else:
+                lines.append(f"    {py}: {ann}")
+        self._classes[name] = "\n".join(lines)
+        self._class_module[name] = f"{snake(resource)}_{snake(m.name)}_params"
+
     def _method_src(self, m: Method, resource: str, *, is_async: bool) -> str:
         ret = self._return_type(m, resource)
         path_args = [snake(p.name) for p in m.path_params]
@@ -407,6 +447,12 @@ class _Emitter:
                           frozenset()))
             for p in m.query_params
         ]
+        # Stainless emits a `<Res><Method>Params` TypedDict for any operation
+        # with non-path params. We keep our kwargs signature AND emit this as
+        # an exported type (drop-in: `from pkg.types import XParams` works;
+        # no signature change — advisor's concern avoided).
+        self._emit_params_type(resource, m, body_props, query_props)
+
         st = m.streaming
         disc = st.discriminator if st else None
         if st:

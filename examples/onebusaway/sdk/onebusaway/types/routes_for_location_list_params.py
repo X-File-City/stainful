@@ -12,14 +12,11 @@ from pydantic import Field  # noqa: F401
 from .._core._models import BaseModel  # noqa: F401
 from .._utils import PropertyInfo  # noqa: F401
 
-from .shared import References, ResponseWrapper
 
-
-class RouteIDsForAgencyListResponseData(BaseModel):
-    limit_exceeded: Optional[bool] = Field(default=None, alias="limitExceeded")
-    list: List[str]
-    references: References
-
-
-class RouteIDsForAgencyListResponse(ResponseWrapper):
-    data: RouteIDsForAgencyListResponseData
+class RoutesForLocationListParams(TypedDict, total=False):
+    lat: float
+    lon: float
+    radius: float
+    lat_span: Annotated[float, PropertyInfo(alias="latSpan")]
+    lon_span: Annotated[float, PropertyInfo(alias="lonSpan")]
+    query: str

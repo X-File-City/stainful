@@ -12,14 +12,7 @@ from pydantic import Field  # noqa: F401
 from .._core._models import BaseModel  # noqa: F401
 from .._utils import PropertyInfo  # noqa: F401
 
-from .shared import References, ResponseWrapper
 
-
-class RouteIDsForAgencyListResponseData(BaseModel):
-    limit_exceeded: Optional[bool] = Field(default=None, alias="limitExceeded")
-    list: List[str]
-    references: References
-
-
-class RouteIDsForAgencyListResponse(ResponseWrapper):
-    data: RouteIDsForAgencyListResponseData
+class SearchForStopListParams(TypedDict, total=False):
+    input: str
+    max_count: Annotated[int, PropertyInfo(alias="maxCount")]

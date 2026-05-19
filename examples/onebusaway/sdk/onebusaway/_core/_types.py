@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Union
+from typing import IO, Any, Mapping, Optional, Tuple, Union
 
 from ._sentinels import Omit, Omittable
 
@@ -11,4 +11,13 @@ Headers = Mapping[str, Union[str, Omit]]
 Query = Mapping[str, object]
 Body = object
 
-__all__ = ["Headers", "Query", "Body", "Omittable", "Any"]
+# A multipart file field — symbol-compatible with openai-python: raw bytes,
+# a binary file object, or a (filename, content[, content_type]) tuple.
+FileTypes = Union[
+    IO[bytes],
+    bytes,
+    Tuple[Optional[str], Union[IO[bytes], bytes]],
+    Tuple[Optional[str], Union[IO[bytes], bytes], Optional[str]],
+]
+
+__all__ = ["Headers", "Query", "Body", "FileTypes", "Omittable", "Any"]

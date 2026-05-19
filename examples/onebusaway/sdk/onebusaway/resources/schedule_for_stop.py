@@ -16,7 +16,7 @@ from .._core._response import (
     to_streamed_response_wrapper,
 )
 from .._core._sentinels import NotGiven, not_given
-from .._core._types import Body, Headers, Query
+from .._core._types import Body, FileTypes, Headers, Query  # noqa: F401
 from ..types import ScheduleForStopRetrieveResponse
 
 __all__ = ["ScheduleForStopResource", "AsyncScheduleForStopResource"]

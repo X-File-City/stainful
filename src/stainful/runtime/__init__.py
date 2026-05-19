@@ -37,7 +37,7 @@ from ._response import (
 )
 from ._sentinels import NOT_GIVEN, NotGiven, Omit, not_given, omit
 from ._streaming import AsyncStream, Stream
-from ._types import Body, Headers, Query
+from ._types import Body, FileTypes, Headers, Query
 from .pagination import (
     AsyncCursorPage,
     AsyncPage,
@@ -63,6 +63,7 @@ __all__ = [
     "Headers",
     "Query",
     "Body",
+    "FileTypes",
     "Stream",
     "AsyncStream",
     "PageInfo",

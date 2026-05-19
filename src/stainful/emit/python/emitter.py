@@ -26,7 +26,14 @@ from stainful.emit.python._casing import (
     snake,
 )
 from stainful.errors import StainfulError
-from stainful.ir.model import API, HTTPVerb, Method, Resource, SecurityScheme
+from stainful.ir.model import (
+    API,
+    ContentType,
+    HTTPVerb,
+    Method,
+    Resource,
+    SecurityScheme,
+)
 from stainful.ir.types import (
     AnyType,
     ArrayType,
@@ -424,31 +431,32 @@ class _Emitter:
         return None
 
     def _body_props(self, m: Method, resource: str):
-        """[(py, wire, ann, required)] expanded from a JSON object body, else a
-        single opaque `body` param for non-object/non-JSON bodies."""
+        """[(py, wire, ann, required)] expanded from an object body (JSON,
+        multipart, or form-urlencoded). Multipart binary fields are typed
+        `FileTypes`. Falls back to a single opaque `body` param for
+        non-object / streaming-binary bodies."""
         if m.body is None:
             return []
-        from stainful.ir.model import ContentType
-
+        ct = m.body.content_type
         root = f"{pascal_singular_last(resource)}{pascal(m.name)}Params"
         self._cur_module = f"{snake(resource)}_{snake(m.name)}_params"
-        if m.body.content_type != ContentType.JSON:
-            return [("body", None, self._render(m.body.type, root, frozenset()),
-                     m.body.required)]
-        obj = self._resolve_object(m.body.type)
+        obj = (
+            self._resolve_object(m.body.type)
+            if ct in (ContentType.JSON, ContentType.MULTIPART, ContentType.FORM)
+            else None
+        )
         if obj is None:
             return [("body", None, self._render(m.body.type, root, frozenset()),
                      m.body.required)]
         out = []
         for p in obj.properties:
-            out.append(
-                (
-                    self._py_field_name(p.name),
-                    p.name,
-                    self._render(p.type, f"{root}{pascal(p.name)}", frozenset()),
-                    p.required,
-                )
-            )
+            if ct == ContentType.MULTIPART and isinstance(
+                p.type, PrimitiveType
+            ) and p.type.kind == PrimitiveKind.BYTES:
+                ann = "FileTypes"          # binary upload field
+            else:
+                ann = self._render(p.type, f"{root}{pascal(p.name)}", frozenset())
+            out.append((self._py_field_name(p.name), p.name, ann, p.required))
         return out
 
     def _emit_params_type(self, resource: str, m: Method, body_props, query_props):
@@ -555,7 +563,12 @@ class _Emitter:
                 f"        _body = {{k: v for k, v in _body.items() "
                 f"if v is not not_given}}\n"
             )
-            body_kwarg = "\n            body=to_jsonable(_body),"
+            if m.body is not None and m.body.content_type == ContentType.MULTIPART:
+                # multipart: pass raw (files mustn't be JSON-coerced); the
+                # runtime splits file-like values into `files`, rest into `data`
+                body_kwarg = "\n            body=_body,\n            multipart=True,"
+            else:
+                body_kwarg = "\n            body=to_jsonable(_body),"
         params_items = "".join(
             f'\n            "{w}": {py},' for py, w, _a in query_props
         )
@@ -742,7 +755,7 @@ from .._core._response import (
     to_streamed_response_wrapper,
 )
 from .._core._sentinels import NotGiven, not_given
-from .._core._types import Body, Headers, Query
+from .._core._types import Body, FileTypes, Headers, Query  # noqa: F401
 {stream_import}{jsonable_import}{pag_import}{sub_import}{models_import}
 __all__ = ["{cls}", "Async{cls}"]
 

@@ -52,8 +52,16 @@ class _BaseClient:
         self._auth_headers = auth_headers or {}
 
     # --- request assembly --------------------------------------------------
+    @staticmethod
+    def _is_file(v: Any) -> bool:
+        return (
+            isinstance(v, (bytes, bytearray, tuple))
+            or hasattr(v, "read")  # file-like / IO
+        )
+
     def _build_request(
-        self, method: str, path: str, options: RequestOptions, json_body: Any
+        self, method: str, path: str, options: RequestOptions, json_body: Any,
+        multipart: bool = False,
     ) -> httpx.Request:
         url = self._base_url.join(path.lstrip("/"))
         params = dict(self._auth_query)
@@ -71,6 +79,16 @@ class _BaseClient:
         body = json_body if json_body is not None else options.extra_body
         # build_request (not httpx.Request) carries per-request timeout via
         # request.extensions; works identically for sync + async clients.
+        if multipart and isinstance(body, dict):
+            # split file-like values into `files`, scalars into `data`;
+            # httpx then sets the multipart/form-data content-type itself.
+            files = {k: v for k, v in body.items() if self._is_file(v)}
+            data = {k: v for k, v in body.items() if not self._is_file(v)}
+            return self._client.build_request(
+                method, url, params=params, headers=headers,
+                data=data or None, files=files or None,
+                timeout=httpx.Timeout(timeout),
+            )
         return self._client.build_request(
             method, url, params=params, headers=headers,
             json=body if body is not None else None,
@@ -143,8 +161,11 @@ class SyncAPIClient(_BaseClient):
         self, method: str, path: str, *, options: RequestOptions,
         cast_to: type | None, json_body: Any = None,
         stream: bool = False, stream_cls: type | None = None,
+        multipart: bool = False,
     ) -> Any:
-        request = self._build_request(method, path, options, json_body)
+        request = self._build_request(
+            method, path, options, json_body, multipart=multipart
+        )
         last_exc: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
@@ -186,9 +207,10 @@ class SyncAPIClient(_BaseClient):
 
     def _post(self, path: str, *, body: Any = None, options: RequestOptions,
               cast_to: type | None, stream: bool = False,
-              stream_cls: type | None = None) -> Any:
+              stream_cls: type | None = None, multipart: bool = False) -> Any:
         return self._request("POST", path, options=options, cast_to=cast_to,
-                             json_body=body, stream=stream, stream_cls=stream_cls)
+                             json_body=body, stream=stream,
+                             stream_cls=stream_cls, multipart=multipart)
 
     def _put(self, path: str, *, body: Any = None, options: RequestOptions,
              cast_to: type | None) -> Any:
@@ -222,10 +244,13 @@ class AsyncAPIClient(_BaseClient):
         self, method: str, path: str, *, options: RequestOptions,
         cast_to: type | None, json_body: Any = None,
         stream: bool = False, stream_cls: type | None = None,
+        multipart: bool = False,
     ) -> Any:
         import asyncio
 
-        request = self._build_request(method, path, options, json_body)
+        request = self._build_request(
+            method, path, options, json_body, multipart=multipart
+        )
         last_exc: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
@@ -269,10 +294,11 @@ class AsyncAPIClient(_BaseClient):
 
     async def _post(self, path: str, *, body: Any = None, options: RequestOptions,
                      cast_to: type | None, stream: bool = False,
-                     stream_cls: type | None = None) -> Any:
+                     stream_cls: type | None = None,
+                     multipart: bool = False) -> Any:
         return await self._request("POST", path, options=options, cast_to=cast_to,
                                    json_body=body, stream=stream,
-                                   stream_cls=stream_cls)
+                                   stream_cls=stream_cls, multipart=multipart)
 
     async def _put(self, path: str, *, body: Any = None, options: RequestOptions,
                     cast_to: type | None) -> Any:

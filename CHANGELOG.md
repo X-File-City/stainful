@@ -6,6 +6,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Multipart / file upload (RESEARCH §4 #10).** `multipart/form-data`
+  bodies were emitted as one opaque param and sent as JSON (broken for
+  real uploads, e.g. OpenAI files/audio). Now: fields are expanded, binary
+  fields typed `FileTypes`, and the runtime sends real multipart (file in
+  `files`, scalars in `data`), sync + async. New fixture + conformance
+  test; generated SDK stays mypy-clean.
 - **Auto-pagination (RESEARCH §4 #1).** Paginated `list` endpoints now
   generate `Sync/AsyncCursorPage[Item]` returns; `for x in client.x.list():`
   (and `async for`) transparently walks **every** page over the vendored

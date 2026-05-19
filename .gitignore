@@ -29,3 +29,4 @@ tests/quality/fidelity_onebusaway.json
 
 tests/quality/upstream_compat.json
 tests/quality/type_parity.json
+demo/out/

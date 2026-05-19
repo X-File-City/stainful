@@ -128,6 +128,8 @@ class _BaseClient:
     ) -> Any:
         if cast_to is None:
             return data
+        if cast_to is bytes:                       # binary download endpoint
+            return response.content
         import typing
 
         import pydantic

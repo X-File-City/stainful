@@ -252,12 +252,13 @@ class _Builder:
         for status, resp in responses.items():
             if not isinstance(resp, dict):
                 continue
-            schema = (
-                (resp.get("content", {}) or {})
-                .get("application/json", {})
-                .get("schema")
-            )
+            content = resp.get("content", {}) or {}
+            schema = content.get("application/json", {}).get("schema")
             if schema is None:
+                # Non-JSON body (octet-stream, audio/*, image/*, …) → binary
+                # download. Returning bytes is correct; JSON-parsing it isn't.
+                if content:
+                    out[str(status)] = PrimitiveType(PrimitiveKind.BYTES)
                 continue
             # Do NOT pre-flatten: _type's allOf branch splits shared bases
             # into inheritance (Stainless envelope shape). Pre-flattening here

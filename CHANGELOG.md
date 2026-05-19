@@ -6,6 +6,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Binary responses.** Non-JSON 200s (audio/*, octet-stream, image/*, …) used to get no type and be JSON-parsed (mangled). Now download endpoints (e.g. OpenAI `audio.speech`) return raw `bytes`, sync + async. Fixture + conformance test; mypy-clean.
 - **Multipart / file upload (RESEARCH §4 #10).** `multipart/form-data`
   bodies were emitted as one opaque param and sent as JSON (broken for
   real uploads, e.g. OpenAI files/audio). Now: fields are expanded, binary

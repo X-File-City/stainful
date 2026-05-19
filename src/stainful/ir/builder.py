@@ -371,6 +371,11 @@ class _Builder:
             environments=self._environments(),
             auth=self._auth(),
             models=self._models(),
+            shared_models={
+                mc.openapi_ref: key
+                for key, mc in self.config.shared_models.items()
+                if mc.openapi_ref
+            },
             root=root,
         )
 

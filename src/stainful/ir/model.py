@@ -112,5 +112,9 @@ class API:
     environments: dict[str, str] = field(default_factory=dict)
     auth: list[SecurityScheme] = field(default_factory=list)
     models: dict[str, Model] = field(default_factory=dict)
+    # component-schema-name -> raw `$shared.models` key (Stainless emits these
+    # once as shared classes named after the key, e.g. Reference -> "references"
+    # -> class `References`). Everything else is operation-local.
+    shared_models: dict[str, str] = field(default_factory=dict)
     # config `$client:` methods live on root (no parent resource).
     root: Resource = field(default_factory=lambda: Resource(name="$client"))

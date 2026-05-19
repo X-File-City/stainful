@@ -67,6 +67,12 @@ class _Emitter:
         self.brand = brand(api.name)
         self.out = Path(out_dir)
         self.root = self.out / self.pkg
+        # component-schema-name -> shared class name (Stainless `$shared.models`
+        # convention: e.g. component `Reference` -> class `References`). These
+        # are emitted once and shared; everything else is component-local.
+        self._shared: dict[str, str] = {
+            comp: pascal(key) for comp, key in api.shared_models.items()
+        }
         # synthetic models (anonymous response objects) discovered during render
         self._synthetic: dict[str, ObjectType] = {}
         # variant model (Pascal) -> {wire prop: tag} for discriminated unions
@@ -75,9 +81,13 @@ class _Emitter:
             t = mdl.type
             if isinstance(t, UnionType) and t.discriminator and t.discriminator.mapping:
                 for tagv, mname in t.discriminator.mapping.items():
-                    self._disc_overrides.setdefault(pascal(mname), {})[
-                        t.discriminator.property_name
-                    ] = tagv
+                    self._disc_overrides.setdefault(
+                        self._shared.get(mname, pascal(mname)), {}
+                    )[t.discriminator.property_name] = tagv
+
+    def _model_name(self, component: str) -> str:
+        """Emitted class name for a component schema (shared-aware)."""
+        return self._shared.get(component, pascal(component))
 
     # --- type rendering ---------------------------------------------------
     # `hint` names anonymous ObjectTypes deterministically as synthetic models;
@@ -90,7 +100,7 @@ class _Emitter:
         if isinstance(t, AnyType):
             return "object"
         if isinstance(t, ModelRef):
-            return pascal(t.name)
+            return self._model_name(t.name)
         if isinstance(t, ArrayType):
             return f"List[{self._ann(t.item, hint + 'Item')}]"
         if isinstance(t, MapType):
@@ -175,12 +185,13 @@ class _Emitter:
         return f"    {py}: {ann} = None"
 
     def _model_class(self, name: str, obj: ObjectType) -> str:
-        lines = [f"class {pascal(name)}(BaseModel):"]
+        disp = self._model_name(name)
+        lines = [f"class {disp}(BaseModel):"]
         if not obj.properties:
             lines.append("    pass")
         for p in obj.properties:
             lines.append(
-                self._field_line(p.name, p.type, p.required, p.nullable, name)
+                self._field_line(p.name, p.type, p.required, p.nullable, disp)
             )
         return "\n".join(lines)
 
@@ -192,7 +203,9 @@ class _Emitter:
                 blocks.append(self._model_class(name, model.type))
             else:
                 # alias model (e.g. `X = $ref Y` or an enum/scalar newtype)
-                aliases.append(f"{pascal(name)} = {self._ann(model.type, name)}")
+                aliases.append(
+                    f"{self._model_name(name)} = {self._ann(model.type, name)}"
+                )
         # Synthetic response models, to a fixpoint: rendering one can register
         # another (nested anonymous object). Deterministic names => terminates.
         done: set[str] = set()
@@ -222,7 +235,9 @@ class _Emitter:
         )
         (self.root / "types").mkdir(parents=True, exist_ok=True)
         (self.root / "types" / "models.py").write_text(body)
-        exported = [pascal(n) for n in self.api.models] + list(self._synthetic)
+        exported = [
+            self._model_name(n) for n in self.api.models
+        ] + list(self._synthetic)
         (self.root / "types" / "__init__.py").write_text(
             _HEADER
             + f"from .models import {', '.join(sorted(set(exported)))}\n\n"
@@ -441,7 +456,9 @@ class _Emitter:
         # membership against the known model universe (incl. synthetic),
         # word-boundary matched. Covers returns, params, body, event models.
         scan = sync_methods + "\n" + async_methods
-        known = {pascal(n) for n in self.api.models} | set(self._synthetic)
+        known = {
+            self._model_name(n) for n in self.api.models
+        } | set(self._synthetic)
         used = sorted(n for n in known if re.search(rf"\b{re.escape(n)}\b", scan))
         models_import = (
             "from ..types.models import " + ", ".join(used) + "\n" if used else ""

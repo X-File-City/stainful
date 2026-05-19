@@ -10,7 +10,7 @@ from stainful.config import load_config
 from stainful.config.model import CLIENT_KEY, SHARED_KEY
 from stainful.errors import ConfigError
 
-FIXTURE = Path(__file__).parent / "fixtures" / "onebusaway" / "stainless-config.yml"
+FIXTURE = Path(__file__).parent.parent / "examples" / "onebusaway" / "stainless.yml"
 
 
 def test_onebusaway_config_loads():

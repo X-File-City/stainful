@@ -20,7 +20,7 @@ from stainful.emit.python import emit
 from stainful.ir.builder import build_ir
 from stainful.openapi.loader import load_spec
 
-FIX = Path(__file__).parent / "fixtures" / "onebusaway"
+FIX = Path(__file__).parent.parent / "examples" / "onebusaway"
 
 _BODY = {
     "code": 200, "currentTime": 1700000000, "text": "OK", "version": 2,
@@ -37,7 +37,7 @@ _BODY = {
 def generated(tmp_path, monkeypatch):
     api = build_ir(
         load_spec(str(FIX / "openapi.yml")),
-        load_config(str(FIX / "stainless-config.yml")),
+        load_config(str(FIX / "stainless.yml")),
     )
     emit(api, str(tmp_path))
     monkeypatch.syspath_prepend(str(tmp_path))

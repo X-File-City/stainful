@@ -1,0 +1,9 @@
+[project]
+name = "onebusaway"
+version = "0.0.2"
+requires-python = ">=3.10"
+dependencies = ["httpx>=0.27", "pydantic>=2.7"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

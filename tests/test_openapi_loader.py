@@ -10,7 +10,7 @@ from stainful.errors import SpecError
 from stainful.openapi.loader import load_spec
 from stainful.openapi.resolver import flatten_allof, resolve_ref
 
-SPEC = Path(__file__).parent / "fixtures" / "onebusaway" / "openapi.yml"
+SPEC = Path(__file__).parent.parent / "examples" / "onebusaway" / "openapi.yml"
 
 
 def _doc():

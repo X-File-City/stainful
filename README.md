@@ -36,11 +36,16 @@ as-is.
 git clone https://github.com/stainlu/stainful && cd stainful
 uv venv && uv pip install -e ".[dev,generated-runtime]"
 
+# generate an idiomatic Python SDK from a real, committed Stainless config
 uv run stainful generate \
-  --spec   openapi.yml \
-  --config stainless.yml \
-  --out    ./sdk
+  --spec   examples/onebusaway/openapi.yml \
+  --config examples/onebusaway/stainless.yml \
+  --out    examples/onebusaway/sdk
 ```
+
+That config is a real production `stainless.yml`; `examples/onebusaway/sdk`
+is checked in and CI fails if regenerating changes a byte (the repo dogfoods
+itself — see [`examples/onebusaway/`](examples/onebusaway/)).
 
 The generated SDK feels like an official client:
 

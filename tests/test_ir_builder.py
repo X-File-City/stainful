@@ -16,13 +16,13 @@ from stainful.ir.model import HTTPVerb
 from stainful.ir.types import ModelRef, ObjectType, PrimitiveKind, PrimitiveType
 from stainful.openapi.loader import load_spec
 
-FIX = Path(__file__).parent / "fixtures" / "onebusaway"
+FIX = Path(__file__).parent.parent / "examples" / "onebusaway"
 
 
 def _api():
     return build_ir(
         load_spec(str(FIX / "openapi.yml")),
-        load_config(str(FIX / "stainless-config.yml")),
+        load_config(str(FIX / "stainless.yml")),
     )
 
 
@@ -133,4 +133,4 @@ def test_missing_operation_is_loud_error_not_fallback(tmp_path):
 
 def test_build_ir_rejects_unloaded_spec():
     with pytest.raises(IRBuildError, match="OpenAPIDocument"):
-        build_ir({"openapi": "3.0.0"}, load_config(str(FIX / "stainless-config.yml")))
+        build_ir({"openapi": "3.0.0"}, load_config(str(FIX / "stainless.yml")))

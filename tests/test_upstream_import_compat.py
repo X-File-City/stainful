@@ -31,7 +31,7 @@ from stainful.emit.python import emit
 from stainful.ir.builder import build_ir
 from stainful.openapi.loader import load_spec
 
-FIX = Path(__file__).parent / "fixtures" / "onebusaway"
+FIX = Path(__file__).parent.parent / "examples" / "onebusaway"
 UPSTREAM = (
     Path(__file__).parent / "oracles" / "onebusaway-python-sdk"
     / "tests" / "api_resources"
@@ -45,7 +45,7 @@ def gen_pkg(tmp_path_factory):
     out = tmp_path_factory.mktemp("gen")
     api = build_ir(
         load_spec(str(FIX / "openapi.yml")),
-        load_config(str(FIX / "stainless-config.yml")),
+        load_config(str(FIX / "stainless.yml")),
     )
     emit(api, str(out))
     sys.path.insert(0, str(out))

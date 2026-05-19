@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from quality.compare import fidelity, not_worse_than  # noqa: E402
 from quality.surface import extract  # noqa: E402
 
-FIX = Path(__file__).parent / "fixtures" / "onebusaway"
+FIX = Path(__file__).parent.parent / "examples" / "onebusaway"
 ORACLE = (
     Path(__file__).parent / "oracles" / "onebusaway-python-sdk"
     / "src" / "onebusaway"
@@ -41,7 +41,7 @@ def report(tmp_path_factory):
     out = tmp_path_factory.mktemp("gen")
     api = build_ir(
         load_spec(str(FIX / "openapi.yml")),
-        load_config(str(FIX / "stainless-config.yml")),
+        load_config(str(FIX / "stainless.yml")),
     )
     emit(api, str(out))
     stainful_surface = extract(out / "onebusaway")

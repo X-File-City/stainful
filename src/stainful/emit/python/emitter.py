@@ -387,6 +387,33 @@ class _Emitter:
                 return self._render(m.responses[status], path, frozenset())
         return "object"
 
+    def _pagination(self, m: Method, resource: str, *, is_async: bool):
+        """(PageClass, ItemAnnotation) for a paginated method, else None.
+
+        Stainless returns `Sync/AsyncCursorPage[Item]` (RESEARCH §4 #1) — an
+        object you iterate to transparently walk every page.
+        """
+        if not m.pagination:
+            return None
+        style = getattr(m.pagination.style, "value", m.pagination.style)
+        kind = "CursorPage" if style in ("cursor", "cursor_id") else "Page"
+        cls = f"{'Async' if is_async else 'Sync'}{kind}"
+        # item type = element of the response's data array
+        resp = m.responses.get("200") or next(iter(m.responses.values()), None)
+        obj = self._resolve_object(resp) if resp is not None else None
+        item = "object"
+        data_key = (m.pagination.data_path or "data").split(".")[-1]
+        if obj is not None:
+            self._cur_module = f"{snake(resource)}_{snake(m.name)}_response"
+            prefix = f"{pascal_singular_last(resource)}{pascal(m.name)}Response"
+            for p in obj.properties:
+                if p.name == data_key and isinstance(p.type, ArrayType):
+                    item = self._render(
+                        p.type.item, f"{prefix}{pascal(p.name)}", frozenset()
+                    )
+                    break
+        return cls, item
+
     def _resolve_object(self, t: Type) -> ObjectType | None:
         if isinstance(t, ObjectType):
             return t
@@ -580,6 +607,31 @@ class _Emitter:
             )
             return o1 + "\n" + o2 + "\n" + impl
 
+        pag = self._pagination(m, resource, is_async=is_async)
+        if pag:
+            page_cls, item = pag
+            ret_t = f"{page_cls}[{item}]"
+            list_call = (
+                f"{await_}self._get_api_list(\n"
+                f'            f"{path}",\n'
+                f"            page={ret_t},\n"
+                f"            options=make_request_options(\n"
+                f"                extra_headers=extra_headers,\n"
+                f"                extra_query=extra_query,\n"
+                f"                extra_body=extra_body,\n"
+                f"                timeout=timeout,{params_kwarg}\n"
+                f"            ),\n"
+                f"        )"
+            )
+            return (
+                f"    {adef} {m.name}(\n        self,{pos}\n        *,"
+                f"{kw_lines(None)}\n    ) -> {ret_t}:\n"
+                f'        """{doc}"""\n'
+                f"{guards + chr(10) if guards else ''}"
+                f"{params_build}"
+                f"        return {list_call}"
+            )
+
         return (
             f"    {adef} {m.name}(\n        self,{pos}\n        *,"
             f"{kw_lines(None)}\n    ) -> {ret}:\n"
@@ -645,6 +697,14 @@ class _Emitter:
             "from .._core._models import to_jsonable\n"
             if "to_jsonable(" in scan else ""
         )
+        pages = sorted({
+            m.group(0)
+            for m in re.finditer(r"\b(?:Sync|Async)(?:Cursor)?Page\b", scan)
+        })
+        pag_import = (
+            f"from .._core.pagination import {', '.join(pages)}\n"
+            if pages else ""
+        )
         rn = snake(r.name)
 
         def wrapper(name: str, recv: str, fn: str) -> str:
@@ -683,7 +743,7 @@ from .._core._response import (
 )
 from .._core._sentinels import NotGiven, not_given
 from .._core._types import Body, Headers, Query
-{stream_import}{jsonable_import}{sub_import}{models_import}
+{stream_import}{jsonable_import}{pag_import}{sub_import}{models_import}
 __all__ = ["{cls}", "Async{cls}"]
 
 

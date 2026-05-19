@@ -110,16 +110,26 @@ class _BaseClient:
     ) -> Any:
         if cast_to is None:
             return data
-        if isinstance(cast_to, type) and issubclass(cast_to, BaseModel):
+        import typing
+
+        import pydantic
+
+        origin = typing.get_origin(cast_to) or cast_to
+        if isinstance(origin, type) and issubclass(origin, BaseModel):
             try:
-                model = cast_to.model_validate(data)
+                # TypeAdapter also handles parametrized page generics
+                # (e.g. SyncCursorPage[Widget]); plain models work too.
+                model: Any = pydantic.TypeAdapter(cast_to).validate_python(data)
             except Exception as exc:  # pydantic.ValidationError et al.
                 raise APIResponseValidationError(
                     response, data, message=str(exc)
                 ) from exc
-            object.__setattr__(
-                model, "_request_id", response.headers.get("x-request-id")
-            )
+            try:
+                object.__setattr__(
+                    model, "_request_id", response.headers.get("x-request-id")
+                )
+            except (AttributeError, ValueError):
+                pass
             return model
         return data
 
@@ -191,7 +201,15 @@ class SyncAPIClient(_BaseClient):
                              json_body=body)
 
     def _get_api_list(self, path: str, *, page: type, options: RequestOptions) -> Any:
-        return self._request("GET", path, options=options, cast_to=page)
+        result = self._request("GET", path, options=options, cast_to=page)
+        return result._init_pagination(self, path, page, options)
+
+    def _paginate_next(self, path, page, options, info):
+        from .pagination import merge_options
+
+        return self._get_api_list(
+            path, page=page, options=merge_options(options, info)
+        )
 
 
 class AsyncAPIClient(_BaseClient):
@@ -268,4 +286,12 @@ class AsyncAPIClient(_BaseClient):
 
     async def _get_api_list(self, path: str, *, page: type,
                             options: RequestOptions) -> Any:
-        return await self._request("GET", path, options=options, cast_to=page)
+        result = await self._request("GET", path, options=options, cast_to=page)
+        return result._init_pagination(self, path, page, options)
+
+    async def _paginate_next(self, path, page, options, info):
+        from .pagination import merge_options
+
+        return await self._get_api_list(
+            path, page=page, options=merge_options(options, info)
+        )

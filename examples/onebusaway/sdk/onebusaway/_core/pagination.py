@@ -1,14 +1,24 @@
-"""Auto-pagination base classes — symbol-compatible with openai-python (§5a).
+"""Auto-pagination — symbol-compatible with openai-python (§5a).
 
 RESEARCH §4 #1: `for item in client.things.list(): ...` transparently walks
-pages. OneBusAway doesn't paginate, but Stainless-quality SDKs ship this, so
-it is part of the runtime (DESIGN §5b cutline: cursor + offset/page).
+EVERY page. The page object carries the client + request context so iterating
+it fetches subsequent pages on demand (sync `__iter__`, async `__aiter__`).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Generic, List, Optional, TypeVar
+from dataclasses import dataclass, replace
+from typing import (
+    Any,
+    AsyncIterator,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    TypeVar,
+)
+
+from pydantic import PrivateAttr
 
 from ._models import BaseModel
 
@@ -25,25 +35,61 @@ __all__ = [
 
 @dataclass
 class PageInfo:
-    """How to fetch the next page: either query params or an absolute url."""
+    """How to fetch the next page: query-param delta or an absolute url."""
 
     params: Optional[dict] = None
     url: Optional[str] = None
 
 
 class BasePage(BaseModel, Generic[_T]):
+    # injected by the client after parsing (not wire fields)
+    _client: Any = PrivateAttr(default=None)
+    _path: str = PrivateAttr(default="")
+    _page_cls: Any = PrivateAttr(default=None)
+    _options: Any = PrivateAttr(default=None)
+
+    def _init_pagination(self, client, path, page_cls, options) -> "BasePage":
+        self._client = client
+        self._path = path
+        self._page_cls = page_cls
+        self._options = options
+        return self
+
     def _get_page_items(self) -> List[_T]:  # pragma: no cover - overridden
         raise NotImplementedError
+
+    def next_page_info(self) -> Optional[PageInfo]:  # pragma: no cover
+        return None
 
     def has_next_page(self) -> bool:
         return self.next_page_info() is not None
 
-    def next_page_info(self) -> Optional[PageInfo]:  # pragma: no cover - overridden
-        return None
+
+def _walk_sync(page: "BasePage") -> Iterator[Any]:
+    while True:
+        yield from page._get_page_items()
+        info = page.next_page_info()
+        if info is None or page._client is None:
+            return
+        page = page._client._paginate_next(
+            page._path, page._page_cls, page._options, info
+        )
+
+
+async def _walk_async(page: "BasePage") -> AsyncIterator[Any]:
+    while True:
+        for item in page._get_page_items():
+            yield item
+        info = page.next_page_info()
+        if info is None or page._client is None:
+            return
+        page = await page._client._paginate_next(
+            page._path, page._page_cls, page._options, info
+        )
 
 
 class SyncPage(BasePage[_T], Generic[_T]):
-    """Single-shot list (`{"data": [...], "object": "list"}`) — one page."""
+    """`{"data": [...], "object": "list"}` — single page (no next)."""
 
     data: List[_T]
     object: Optional[str] = None
@@ -54,16 +100,29 @@ class SyncPage(BasePage[_T], Generic[_T]):
     def next_page_info(self) -> Optional[PageInfo]:
         return None
 
+    def __iter__(self) -> Iterator[_T]:  # type: ignore[override]
+        # deliberately iterates ITEMS (auto-paginating), not pydantic fields
+        return _walk_sync(self)
 
-class AsyncPage(SyncPage[_T], Generic[_T]):
-    pass
+
+class AsyncPage(BasePage[_T], Generic[_T]):
+    data: List[_T]
+    object: Optional[str] = None
+
+    def _get_page_items(self) -> List[_T]:
+        return self.data or []
+
+    def next_page_info(self) -> Optional[PageInfo]:
+        return None
+
+    def __aiter__(self) -> AsyncIterator[_T]:
+        return _walk_async(self)
 
 
-class SyncCursorPage(BasePage[_T], Generic[_T]):
-    """Cursor pagination keyed on `has_more` + the last item's id."""
-
+class _CursorPage(BasePage[_T], Generic[_T]):
     data: List[_T]
     has_more: Optional[bool] = None
+    next_cursor: Optional[str] = None
 
     def _get_page_items(self) -> List[_T]:
         return self.data or []
@@ -71,12 +130,26 @@ class SyncCursorPage(BasePage[_T], Generic[_T]):
     def next_page_info(self) -> Optional[PageInfo]:
         if self.has_more is False or not self.data:
             return None
-        last = self.data[-1]
-        cursor = getattr(last, "id", None)
+        cursor = self.next_cursor
+        if cursor is None:
+            cursor = getattr(self.data[-1], "id", None)
         if cursor is None:
             return None
-        return PageInfo(params={"after": cursor})
+        return PageInfo(params={"cursor": cursor})
 
 
-class AsyncCursorPage(SyncCursorPage[_T], Generic[_T]):
-    pass
+class SyncCursorPage(_CursorPage[_T], Generic[_T]):
+    def __iter__(self) -> Iterator[_T]:  # type: ignore[override]
+        # deliberately iterates ITEMS (auto-paginating), not pydantic fields
+        return _walk_sync(self)
+
+
+class AsyncCursorPage(_CursorPage[_T], Generic[_T]):
+    def __aiter__(self) -> AsyncIterator[_T]:
+        return _walk_async(self)
+
+
+def merge_options(options, info: PageInfo):
+    """Return request options for the next page (cursor merged into params)."""
+    params = {**(getattr(options, "params", None) or {}), **(info.params or {})}
+    return replace(options, params=params)

@@ -5,6 +5,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- **Auto-pagination (RESEARCH §4 #1).** Paginated `list` endpoints now
+  generate `Sync/AsyncCursorPage[Item]` returns; `for x in client.x.list():`
+  (and `async for`) transparently walks **every** page over the vendored
+  runtime. Was entirely missing (the emitter ignored `paginated:`). New
+  conformance fixture + sync/async behavioral test. Generated SDK stays
+  mypy-clean.
+
 ### Improved (model fidelity vs the real Stainless SDK)
 - Resource→type-name prefix now singularizes the last word
   (`trip-details` → `TripDetailRetrieveResponse`; `client.chat.completions`

@@ -220,6 +220,14 @@ class _Emitter:
             comp = self.api.models.get(name)
             if comp is None:
                 return "object"
+            # Inside a SHARED model's subtree, Stainless keeps component refs
+            # as named shared classes (golden References.agencies: List[Agency]).
+            # Do NOT add to self._named — sharedness is CONTEXTUAL: the same
+            # component is still path-inlined in op-response trees (golden has
+            # both `Agency` shared AND `AgencyRetrieveResponseDataEntry`).
+            if self._cur_module == "shared":
+                self._emit_named(name)
+                return self._model_name(name)
             return self._render(comp.type, path, seen | {name})  # inline
         if isinstance(t, ObjectType):
             return self._emit_object(pascal(path), t, seen)

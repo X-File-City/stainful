@@ -13,7 +13,7 @@ from .._core._models import BaseModel  # noqa: F401
 from .._utils import PropertyInfo  # noqa: F401
 
 
-class ReferencesAgency(BaseModel):
+class Agency(BaseModel):
     disclaimer: Optional[str] = None
     email: Optional[str] = None
     fare_url: Optional[str] = Field(default=None, alias="fareUrl")
@@ -26,7 +26,7 @@ class ReferencesAgency(BaseModel):
     url: str
 
 
-class ReferencesRoute(BaseModel):
+class Route(BaseModel):
     agency_id: str = Field(alias="agencyId")
     color: Optional[str] = None
     description: Optional[str] = None
@@ -39,27 +39,27 @@ class ReferencesRoute(BaseModel):
     url: Optional[str] = None
 
 
-class ReferencesSituationSummary(BaseModel):
+class SituationSummary(BaseModel):
     lang: Optional[str] = None
     value: Optional[str] = None
 
 
-class ReferencesSituationDescription(BaseModel):
+class SituationDescription(BaseModel):
     lang: Optional[str] = None
     value: Optional[str] = None
 
 
-class ReferencesSituationURL(BaseModel):
+class SituationURL(BaseModel):
     lang: Optional[str] = None
     value: Optional[str] = None
 
 
-class ReferencesSituationActiveWindow(BaseModel):
+class SituationActiveWindow(BaseModel):
     from_: Optional[int] = Field(default=None, alias="from")
     to: Optional[int] = None
 
 
-class ReferencesSituationAllAffect(BaseModel):
+class SituationAllAffect(BaseModel):
     agency_id: Optional[str] = Field(default=None, alias="agencyId")
     application_id: Optional[str] = Field(default=None, alias="applicationId")
     direction_id: Optional[str] = Field(default=None, alias="directionId")
@@ -68,43 +68,43 @@ class ReferencesSituationAllAffect(BaseModel):
     trip_id: Optional[str] = Field(default=None, alias="tripId")
 
 
-class ReferencesSituationConsequenceConditionDetailsDiversionPath(BaseModel):
+class SituationConsequenceConditionDetailsDiversionPath(BaseModel):
     length: Optional[int] = None
     levels: Optional[str] = None
     points: Optional[str] = None
 
 
-class ReferencesSituationConsequenceConditionDetails(BaseModel):
-    diversion_path: Optional[ReferencesSituationConsequenceConditionDetailsDiversionPath] = Field(default=None, alias="diversionPath")
+class SituationConsequenceConditionDetails(BaseModel):
+    diversion_path: Optional[SituationConsequenceConditionDetailsDiversionPath] = Field(default=None, alias="diversionPath")
     diversion_stop_ids: Optional[List[str]] = Field(default=None, alias="diversionStopIds")
 
 
-class ReferencesSituationConsequence(BaseModel):
+class SituationConsequence(BaseModel):
     condition: Optional[str] = None
-    condition_details: Optional[ReferencesSituationConsequenceConditionDetails] = Field(default=None, alias="conditionDetails")
+    condition_details: Optional[SituationConsequenceConditionDetails] = Field(default=None, alias="conditionDetails")
 
 
-class ReferencesSituationPublicationWindow(BaseModel):
+class TimeWindow(BaseModel):
     from_: int = Field(alias="from")
     to: int
 
 
-class ReferencesSituation(BaseModel):
+class Situation(BaseModel):
     id: str
     creation_time: int = Field(alias="creationTime")
     reason: Optional[str] = None
-    summary: Optional[ReferencesSituationSummary] = None
-    description: Optional[ReferencesSituationDescription] = None
-    url: Optional[ReferencesSituationURL] = None
-    active_windows: Optional[List[ReferencesSituationActiveWindow]] = Field(default=None, alias="activeWindows")
-    all_affects: Optional[List[ReferencesSituationAllAffect]] = Field(default=None, alias="allAffects")
-    consequences: Optional[List[ReferencesSituationConsequence]] = None
-    publication_windows: Optional[List[ReferencesSituationPublicationWindow]] = Field(default=None, alias="publicationWindows")
+    summary: Optional[SituationSummary] = None
+    description: Optional[SituationDescription] = None
+    url: Optional[SituationURL] = None
+    active_windows: Optional[List[SituationActiveWindow]] = Field(default=None, alias="activeWindows")
+    all_affects: Optional[List[SituationAllAffect]] = Field(default=None, alias="allAffects")
+    consequences: Optional[List[SituationConsequence]] = None
+    publication_windows: Optional[List[TimeWindow]] = Field(default=None, alias="publicationWindows")
     severity: Optional[str] = None
     consequence_message: Optional[str] = Field(default=None, alias="consequenceMessage")
 
 
-class ReferencesStopTime(BaseModel):
+class StopTime(BaseModel):
     arrival_time: Optional[int] = Field(default=None, alias="arrivalTime")
     departure_time: Optional[int] = Field(default=None, alias="departureTime")
     distance_along_trip: Optional[float] = Field(default=None, alias="distanceAlongTrip")
@@ -113,7 +113,7 @@ class ReferencesStopTime(BaseModel):
     stop_id: Optional[str] = Field(default=None, alias="stopId")
 
 
-class ReferencesStop(BaseModel):
+class Stop(BaseModel):
     code: Optional[str] = None
     direction: Optional[str] = None
     id: str
@@ -127,7 +127,7 @@ class ReferencesStop(BaseModel):
     wheelchair_boarding: Optional[str] = Field(default=None, alias="wheelchairBoarding")
 
 
-class ReferencesTrip(BaseModel):
+class Trip(BaseModel):
     block_id: Optional[str] = Field(default=None, alias="blockId")
     direction_id: Optional[str] = Field(default=None, alias="directionId")
     id: str
@@ -142,12 +142,12 @@ class ReferencesTrip(BaseModel):
 
 
 class References(BaseModel):
-    agencies: List[ReferencesAgency]
-    routes: List[ReferencesRoute]
-    situations: List[ReferencesSituation]
-    stop_times: List[ReferencesStopTime] = Field(alias="stopTimes")
-    stops: List[ReferencesStop]
-    trips: List[ReferencesTrip]
+    agencies: List[Agency]
+    routes: List[Route]
+    situations: List[Situation]
+    stop_times: List[StopTime] = Field(alias="stopTimes")
+    stops: List[Stop]
+    trips: List[Trip]
 
 
 class ResponseWrapper(BaseModel):

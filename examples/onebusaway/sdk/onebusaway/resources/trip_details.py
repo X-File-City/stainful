@@ -17,7 +17,7 @@ from .._core._response import (
 )
 from .._core._sentinels import NotGiven, not_given
 from .._core._types import Body, Headers, Query
-from ..types import TripDetailsRetrieveResponse
+from ..types import Trip, TripDetailsRetrieveResponse
 
 __all__ = ["TripDetailsResource", "AsyncTripDetailsResource"]
 

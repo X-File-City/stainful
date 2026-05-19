@@ -6,7 +6,7 @@
   ],
   "resource_method_recall": 1.0,
   "method_signature_match": 0.9886,
-  "model_name_recall": 0.8182,
+  "model_name_recall": 0.8977,
   "export_recall": 0.5122,
   "counts": {
     "oracle_exceptions": 16,

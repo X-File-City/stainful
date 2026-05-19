@@ -29,5 +29,12 @@ jobs:
       - name: Lint
         run: uv run ruff check src tests
 
+      # Tier-1 fidelity oracle: the real Stainless-generated OneBusAway SDK at
+      # a pinned SHA. Drives the no-regression fidelity gate in pytest.
+      # (openai/anthropic oracles are tracked metrics, run out-of-band, not
+      # gated here — config-approximated, heavier.)
+      - name: Fetch fidelity oracle
+        run: bash scripts/fetch_oracles.sh onebusaway-python-sdk
+
       - name: Test
         run: uv run pytest -q

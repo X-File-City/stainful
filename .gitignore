@@ -14,3 +14,8 @@ build/
 
 # golden _core is copied from src/stainful/runtime at test time
 tests/golden/*/*/_core/
+
+# internal-only docs (kept locally, not part of the public repo)
+RESEARCH.md
+DESIGN.md
+.venv312/

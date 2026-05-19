@@ -1,6 +1,7 @@
 ## What & why
 
-<!-- The change, and which RESEARCH §4 capability / DESIGN slice it touches. -->
+<!-- The change, and which part of the pipeline (config / openapi / IR /
+     emitter / runtime) it touches. -->
 
 ## Conformance
 
@@ -8,7 +9,6 @@
 - [ ] `uv run ruff check src tests` clean
 - [ ] New behavior covered by a fixture-driven test that failed first
 - [ ] No fallback added; errors carry a source location
-- [ ] `DESIGN.md` updated if architecture/scope moved
 
 ## Fidelity
 

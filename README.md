@@ -104,7 +104,6 @@ The intermediate representation is a fully-resolved, language-agnostic model:
 `allOf` is merged, `oneOf` becomes a real tagged union, and optionality is
 three-valued. The emitter is a thin renderer over a hand-written runtime, so the
 idiomatic behavior lives in audited code rather than per-endpoint templates.
-Architecture notes: [`DESIGN.md`](DESIGN.md).
 
 ## How it compares
 

@@ -27,6 +27,6 @@ First working release. **v1 complete (slices 1–6), 37 tests green.**
 - Output matches the real Stainless-generated `OneBusAway/python-sdk` on client
   class name, package, env var, and call shape — the drop-in symbol contract.
 
-### Known gaps (v1.1 backlog — see `DESIGN.md §7`)
+### Known gaps (v1.1 backlog — see the README Status section)
 `to_json()/.to_dict()` helper aliases · rich `APIResponse` object ·
 per-file model modules · typed error-body models · `custom_casings`.

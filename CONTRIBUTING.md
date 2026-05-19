@@ -1,8 +1,7 @@
 # Contributing to stainful
 
 Thanks for helping build the open-source Stainless. This project values
-**deep modules, clean interfaces, and honest scope** — read [`DESIGN.md`](DESIGN.md)
-before non-trivial changes.
+**deep modules, clean interfaces, and honest scope**.
 
 ## Setup
 
@@ -15,10 +14,10 @@ uv run ruff check src tests
 
 ## Architecture in one breath
 
-`config + openapi → IR → emit`. The **IR is the moat** (`src/stainful/ir/`): a
-fully-resolved, language-agnostic semantic model. Front-half loaders never know
-about Python; the emitter never parses OpenAPI. Four public functions, one per
-module — keep that boundary clean.
+`config + openapi → IR → emit`. The **IR** (`src/stainful/ir/`) is a
+fully-resolved, language-agnostic semantic model and the heart of the project.
+Front-half loaders never know about Python; the emitter never parses OpenAPI.
+Four public functions, one per module — keep that boundary clean.
 
 ## Ground rules
 
@@ -34,16 +33,16 @@ module — keep that boundary clean.
 
 ## Good first issues
 
-The `DESIGN.md §7` v1.1 backlog — each item is self-contained behind the IR
-boundary: `to_json()/.to_dict()` helpers, rich `APIResponse`, per-file model
-modules, typed error-body models, `custom_casings`.
+The v1.1 backlog (see the README **Status** section) — each item is
+self-contained behind the IR boundary: `to_json()/.to_dict()` helpers, a richer
+raw-response object, per-file model modules, typed error-body models,
+`custom_casings`.
 
 ## PR checklist
 
 - [ ] `uv run pytest -q` green
 - [ ] `uv run ruff check src tests` clean
 - [ ] New behavior covered by a fixture-driven test
-- [ ] `DESIGN.md` updated if the architecture or scope moved
 - [ ] No fallback added; errors carry source location
 
-By contributing you agree your work is licensed under Apache-2.0.
+By contributing you agree your work is licensed under MIT.

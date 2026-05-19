@@ -124,11 +124,17 @@ class _Emitter:
 
         `from` -> `from_`, `2fa` -> `field_2fa`. The original wire name is
         carried via `alias` (caller compares py != pname).
+
+        Only *true* keywords are mangled. Soft keywords (`match`, `case`,
+        `type`, `_`) are valid as attribute/field names and MUST NOT be
+        mangled — and `type` only became a soft keyword in 3.12, so mangling
+        it would make generated output differ across Python versions (and
+        break discriminated-union fields named `type`).
         """
         py = snake(pname)
         if not py or py[0].isdigit():
             py = f"field_{py}"
-        if keyword.iskeyword(py) or keyword.issoftkeyword(py):
+        if keyword.iskeyword(py):
             py = f"{py}_"
         return py
 

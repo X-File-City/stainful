@@ -73,82 +73,125 @@ class _Emitter:
         self._shared: dict[str, str] = {
             comp: pascal(key) for comp, key in api.shared_models.items()
         }
-        # synthetic models (anonymous response objects) discovered during render
-        self._synthetic: dict[str, ObjectType] = {}
-        # variant model (Pascal) -> {wire prop: tag} for discriminated unions
+        # Components that MUST stay standalone named classes (never inlined):
+        # config $shared.models + discriminated-union variants (their tag field
+        # must be a pydantic-visible Literal on a real class).
+        self._named: set[str] = set(self._shared)
+        # variant/owner class name -> {wire prop: tag literal}
         self._disc_overrides: dict[str, dict[str, str]] = {}
         for mdl in api.models.values():
             t = mdl.type
             if isinstance(t, UnionType) and t.discriminator and t.discriminator.mapping:
                 for tagv, mname in t.discriminator.mapping.items():
+                    self._named.add(mname)
                     self._disc_overrides.setdefault(
-                        self._shared.get(mname, pascal(mname)), {}
+                        self._model_name(mname), {}
                     )[t.discriminator.property_name] = tagv
+        # collected output, insertion-ordered: class name -> source
+        self._classes: dict[str, str] = {}
+        self._aliases: dict[str, str] = {}
+        self._building: set[str] = set()
 
     def _model_name(self, component: str) -> str:
         """Emitted class name for a component schema (shared-aware)."""
         return self._shared.get(component, pascal(component))
 
-    # --- type rendering ---------------------------------------------------
-    # `hint` names anonymous ObjectTypes deterministically as synthetic models;
-    # it threads through containers so nested anonymous objects are named too.
-    def _ann(self, t: Type, hint: str) -> str:
+    # --- model collector (Stainless per-operation path-named inlining) ----
+    # Every operation owns a path-named model family
+    # (`AgencyRetrieveResponse` -> `...ResponseData` -> `...ResponseDataEntry`).
+    # Component schemas are INLINED under that path unless they are `$named`
+    # (config $shared.models or discriminated-union variants) or on a $ref
+    # cycle (auto-promoted to a standalone class). One eager recursive pass so
+    # cycle state (`seen`) is never lost.
+
+    def _render(self, t: Type, path: str, seen: frozenset[str]) -> str:
         if isinstance(t, PrimitiveType):
             return _PRIM.get(t.kind, "object")
         if isinstance(t, NullType):
             return "None"
         if isinstance(t, AnyType):
             return "object"
-        if isinstance(t, ModelRef):
-            return self._model_name(t.name)
-        if isinstance(t, ArrayType):
-            return f"List[{self._ann(t.item, hint + 'Item')}]"
-        if isinstance(t, MapType):
-            return f"Dict[str, {self._ann(t.value, hint + 'Value')}]"
         if isinstance(t, EnumType):
             lits = ", ".join(repr(m.value) for m in t.members)
             return f"Literal[{lits}]" if lits else "str"
+        if isinstance(t, ArrayType):
+            return f"List[{self._render(t.item, path, seen)}]"
+        if isinstance(t, MapType):
+            return f"Dict[str, {self._render(t.value, path, seen)}]"
         if isinstance(t, UnionType):
-            rendered = [
-                self._ann(v, f"{hint}Variant{i}") for i, v in enumerate(t.variants)
+            parts = [
+                self._render(v, f"{path}Variant{i}", seen)
+                for i, v in enumerate(t.variants)
             ]
-            non_null = sorted({x for x in rendered if x != "None"})
-            if "None" in rendered:
-                non_null.append("None")
-            if len(non_null) == 1:
-                return non_null[0]
-            union = f"Union[{', '.join(non_null)}]"
-            # oneOf + discriminator -> a real pydantic v2 tagged union
-            # (RESEARCH §4 #8): parsed into the right variant by the tag field.
+            nn = sorted({x for x in parts if x != "None"})
+            if "None" in parts:
+                nn.append("None")
+            if len(nn) == 1:
+                return nn[0]
+            union = f"Union[{', '.join(nn)}]"
             if t.discriminator is not None:
                 return (
                     f'Annotated[{union}, '
                     f'Field(discriminator="{t.discriminator.property_name}")]'
                 )
             return union
+        if isinstance(t, ModelRef):
+            name = t.name
+            if name in self._named or name in self._shared:
+                self._emit_named(name)
+                return self._model_name(name)
+            if name in seen:                       # $ref cycle -> promote
+                self._named.add(name)
+                self._emit_named(name)
+                return self._model_name(name)
+            comp = self.api.models.get(name)
+            if comp is None:
+                return "object"
+            return self._render(comp.type, path, seen | {name})  # inline
         if isinstance(t, ObjectType):
-            # anonymous object -> deterministically named synthetic model
-            name = pascal(hint)
-            self._synthetic[name] = t
-            return name
+            return self._emit_object(pascal(path), t, seen)
         return "object"
 
-    def _ann_or_synth(self, t: Type, hint: str) -> str:
-        return self._ann(t, hint)
+    def _emit_object(
+        self, cls: str, obj: ObjectType, seen: frozenset[str]
+    ) -> str:
+        if cls in self._classes or cls in self._building:
+            return cls                              # done / breaking recursion
+        self._building.add(cls)
+        bases = [self._model_name(b.name) for b in obj.bases]
+        for b in obj.bases:
+            self._emit_named(b.name)
+        lines = [f"class {cls}({', '.join(bases) or 'BaseModel'}):"]
+        if not obj.properties:
+            lines.append("    pass")
+        for p in obj.properties:
+            lines.append(self._field(p, cls, seen))
+        self._building.discard(cls)
+        self._classes[cls] = "\n".join(lines)
+        return cls
 
-    # --- model classes ----------------------------------------------------
+    def _emit_named(self, component: str) -> str:
+        disp = self._model_name(component)
+        if disp in self._classes or disp in self._aliases:
+            return disp
+        comp = self.api.models.get(component)
+        if comp is None:
+            return disp
+        if isinstance(comp.type, ObjectType):
+            return self._emit_object(disp, comp.type, frozenset({component}))
+        # alias / enum / scalar newtype emitted after classes
+        self._aliases[disp] = (
+            f"{disp} = {self._render(comp.type, disp, frozenset({component}))}"
+        )
+        return disp
+
     @staticmethod
     def _py_field_name(pname: str) -> str:
-        """Idiomatic field name, mangled if it collides with Python syntax.
-
-        `from` -> `from_`, `2fa` -> `field_2fa`. The original wire name is
-        carried via `alias` (caller compares py != pname).
-
-        Only *true* keywords are mangled. Soft keywords (`match`, `case`,
-        `type`, `_`) are valid as attribute/field names and MUST NOT be
-        mangled — and `type` only became a soft keyword in 3.12, so mangling
-        it would make generated output differ across Python versions (and
-        break discriminated-union fields named `type`).
+        """Idiomatic field name, mangled only if it collides with a TRUE
+        keyword (`from` -> `from_`, `2fa` -> `field_2fa`). Soft keywords
+        (`type`, `match`, ...) are valid field names and must NOT be mangled —
+        `type` only became soft in 3.12, so mangling it would diverge output
+        across Python versions and break discriminated-union tag fields.
         """
         py = snake(pname)
         if not py or py[0].isdigit():
@@ -157,67 +200,33 @@ class _Emitter:
             py = f"{py}_"
         return py
 
-    def _field_line(
-        self, pname: str, t: Type, required: bool, nullable: bool, owner: str
-    ) -> str:
-        py = self._py_field_name(pname)
-        # pydantic requires a discriminated-union variant's tag field to be a
-        # Literal of its tag value (RESEARCH §4 #8) — narrow it here.
-        tag = self._disc_overrides.get(pascal(owner), {}).get(pname)
-        if tag is not None:
-            needs = py != pname
+    def _field(self, p, owner_cls: str, seen: frozenset[str]) -> str:
+        py = self._py_field_name(p.name)
+        tag = self._disc_overrides.get(owner_cls, {}).get(p.name)
+        if tag is not None:                         # discriminated-union tag
             lit = f"Literal[{tag!r}]"
             return (
-                f'    {py}: {lit} = Field(alias="{pname}")'
-                if needs else f"    {py}: {lit}"
+                f'    {py}: {lit} = Field(alias="{p.name}")'
+                if py != p.name else f"    {py}: {lit}"
             )
-        ann = self._ann_or_synth(t, f"{pascal(owner)}{pascal(pname)}")
-        if nullable:
+        ann = self._render(p.type, f"{owner_cls}{pascal(p.name)}", seen)
+        if p.nullable:
             ann = f"Optional[{ann}]"
-        needs_alias = py != pname
-        if required and not needs_alias:
+        needs_alias = py != p.name
+        if p.required and not needs_alias:
             return f"    {py}: {ann}"
-        if required and needs_alias:
-            return f'    {py}: {ann} = Field(alias="{pname}")'
+        if p.required and needs_alias:
+            return f'    {py}: {ann} = Field(alias="{p.name}")'
         ann = ann if ann.startswith("Optional[") else f"Optional[{ann}]"
         if needs_alias:
-            return f'    {py}: {ann} = Field(default=None, alias="{pname}")'
+            return f'    {py}: {ann} = Field(default=None, alias="{p.name}")'
         return f"    {py}: {ann} = None"
 
-    def _model_class(self, name: str, obj: ObjectType) -> str:
-        disp = self._model_name(name)
-        # allOf shared members -> base classes (Stainless inheritance shape).
-        bases = [self._model_name(b.name) for b in obj.bases] or ["BaseModel"]
-        lines = [f"class {disp}({', '.join(bases)}):"]
-        if not obj.properties:
-            lines.append("    pass")
-        for p in obj.properties:
-            lines.append(
-                self._field_line(p.name, p.type, p.required, p.nullable, disp)
-            )
-        return "\n".join(lines)
-
     def _emit_models(self) -> None:
-        blocks: list[str] = []
-        aliases: list[str] = []
-        for name, model in self.api.models.items():
-            if isinstance(model.type, ObjectType):
-                blocks.append(self._model_class(name, model.type))
-            else:
-                # alias model (e.g. `X = $ref Y` or an enum/scalar newtype)
-                aliases.append(
-                    f"{self._model_name(name)} = {self._ann(model.type, name)}"
-                )
-        # Synthetic response models, to a fixpoint: rendering one can register
-        # another (nested anonymous object). Deterministic names => terminates.
-        done: set[str] = set()
-        while set(self._synthetic) - done:
-            for sname in list(self._synthetic):
-                if sname in done:
-                    continue
-                done.add(sname)
-                blocks.append(self._model_class(sname, self._synthetic[sname]))
-
+        # Classes are registered as a side effect of rendering each method's
+        # response/body (done while emitting resource files, before this).
+        # Aliases come after classes (a discriminated-union alias is an
+        # executed assignment that must follow its variant classes).
         body = (
             _HEADER
             + "from __future__ import annotations\n\n"
@@ -227,31 +236,26 @@ class _Emitter:
             + "    Annotated, Any, Dict, List, Literal, Optional, Union,\n)\n\n"
             + "from pydantic import Field  # noqa: F401\n\n"
             + "from .._core._models import BaseModel\n\n\n"
-            # classes first, then aliases — a discriminated-union alias
-            # (`Event = Annotated[Union[...], Field(discriminator=...)]`) is an
-            # executed assignment and must follow its variant classes. (v1
-            # limitation: a model field forward-referencing a union alias by
-            # name is not supported; rare, noted not hidden.)
-            + "\n\n\n".join(blocks + aliases)
+            + "\n\n\n".join(
+                list(self._classes.values()) + list(self._aliases.values())
+            )
             + "\n"
         )
         (self.root / "types").mkdir(parents=True, exist_ok=True)
         (self.root / "types" / "models.py").write_text(body)
-        exported = [
-            self._model_name(n) for n in self.api.models
-        ] + list(self._synthetic)
+        exported = sorted(set(self._classes) | set(self._aliases))
         (self.root / "types" / "__init__.py").write_text(
             _HEADER
-            + f"from .models import {', '.join(sorted(set(exported)))}\n\n"
-            + f"__all__ = {sorted(set(exported))!r}\n"
+            + (f"from .models import {', '.join(exported)}\n\n" if exported else "")
+            + f"__all__ = {exported!r}\n"
         )
 
     # --- methods / resources ---------------------------------------------
     def _return_type(self, m: Method, resource: str) -> str:
         for status in ("200", "201", "2XX", "default"):
             if status in m.responses:
-                hint = f"{pascal(resource)}{pascal(m.name)}Response"
-                return self._ann_or_synth(m.responses[status], hint)
+                path = f"{pascal(resource)}{pascal(m.name)}Response"
+                return self._render(m.responses[status], path, frozenset())
         return "object"
 
     def _resolve_object(self, t: Type) -> ObjectType | None:
@@ -270,20 +274,21 @@ class _Emitter:
             return []
         from stainful.ir.model import ContentType
 
+        root = f"{pascal(resource)}{pascal(m.name)}Params"
         if m.body.content_type != ContentType.JSON:
-            return [("body", None, self._ann(m.body.type, "Body"), m.body.required)]
+            return [("body", None, self._render(m.body.type, root, frozenset()),
+                     m.body.required)]
         obj = self._resolve_object(m.body.type)
         if obj is None:
-            return [("body", None, self._ann(m.body.type, "Body"), m.body.required)]
+            return [("body", None, self._render(m.body.type, root, frozenset()),
+                     m.body.required)]
         out = []
         for p in obj.properties:
             out.append(
                 (
                     self._py_field_name(p.name),
                     p.name,
-                    self._ann_or_synth(
-                        p.type, f"{pascal(resource)}{pascal(m.name)}{pascal(p.name)}"
-                    ),
+                    self._render(p.type, f"{root}{pascal(p.name)}", frozenset()),
                     p.required,
                 )
             )
@@ -303,13 +308,16 @@ class _Emitter:
         body_props = self._body_props(m, resource) if has_body_arg else []
         query_props = [
             (self._py_field_name(p.name), p.name,
-             self._ann_or_synth(p.type, f"{pascal(resource)}{pascal(m.name)}Q"))
+             self._render(p.type,
+                          f"{pascal(resource)}{pascal(m.name)}Params{pascal(p.name)}",
+                          frozenset()))
             for p in m.query_params
         ]
         st = m.streaming
         disc = st.discriminator if st else None
         event_ann = (
-            self._ann_or_synth(st.event_type, f"{pascal(resource)}{pascal(m.name)}Event")
+            self._render(st.event_type,
+                         f"{pascal(resource)}{pascal(m.name)}Event", frozenset())
             if st else None
         )
         stream_cls = ("AsyncStream" if is_async else "Stream") if st else None
@@ -458,9 +466,9 @@ class _Emitter:
         # membership against the known model universe (incl. synthetic),
         # word-boundary matched. Covers returns, params, body, event models.
         scan = sync_methods + "\n" + async_methods
-        known = {
-            self._model_name(n) for n in self.api.models
-        } | set(self._synthetic)
+        # every model class the collector has registered so far (this
+        # resource's response/body rendering ran just above)
+        known = set(self._classes) | set(self._aliases)
         used = sorted(n for n in known if re.search(rf"\b{re.escape(n)}\b", scan))
         models_import = (
             "from ..types.models import " + ", ".join(used) + "\n" if used else ""
@@ -681,8 +689,14 @@ _DEFAULT_BASE_URL = "{env_url}"
         shutil.copytree(_RUNTIME, core)
         (core / "__init__.py").write_text("")
 
-        # 2. one file per resource — the whole tree, not just top-level
-        #    (render before models so self._synthetic is populated)
+        # 2a. $shared.models are a DECLARED public surface — emit them first
+        #     (and their subtree) even if no operation references them, and so
+        #     shared bases like ResponseWrapper precede their subclasses.
+        for comp in self.api.shared_models:
+            self._emit_named(comp)
+
+        # 2b. one file per resource — the whole tree. Rendering each method's
+        #     response/body registers its path-named model classes.
         all_resources = list(self._walk(self.api.root.subresources))
         resource_files = {
             snake(r.name): self._resource_src(r) for r in all_resources
